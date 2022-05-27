@@ -13,9 +13,9 @@ import torch.optim as optim
 from torchvision import models
 
 # user defined
-import src.utils as sem_utils
-from src.losses import GANLoss
-from src.logger import AverageMeter
+import utils as sem_utils
+from losses import GANLoss
+from logger import AverageMeter
 
 
 class VGGNetFeats(nn.Module):
