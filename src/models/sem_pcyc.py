@@ -456,6 +456,7 @@ class SEM_PCYC(nn.Module):
                       .format(epoch + 1, i + 1, len(train_loader), batch_time=batch_time, loss_gen=losses_gen,
                               loss_disc=losses_disc))
 
+
         losses = {'aut_enc': losses_aut_enc, 'gen_adv': losses_gen_adv, 'gen_cyc': losses_gen_cyc, 'gen_cls':
             losses_gen_cls, 'gen_reg': losses_gen_reg, 'gen': losses_gen, 'disc_se': losses_disc_se, 'disc_sk':
                       losses_disc_sk, 'disc_im': losses_disc_im, 'disc': losses_disc}

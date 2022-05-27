@@ -15,12 +15,11 @@ from logger import Logger
 from test import validate
 from models import get_model
 
-np.random.seed(0)
-
 
 def main():
 
     args = utils.get_args()
+    np.random.seed(args.seed)
     path_cp, path_log, path_results = utils.get_paths(args)
 
     print('Checkpoint path: {}'.format(path_cp))
@@ -30,6 +29,22 @@ def main():
     train_loader, valid_loader_sketch, valid_loader_image, test_loader_sketch, test_loader_image,\
         photo_dir, sketch_dir, splits, photo_sd, sketch_sd = utils.get_datasets(args)
     params_model = utils.get_params(args)
+
+    if args.savename == 'group_plus_seed':
+        if args.log_online:
+            args.savename = args.group + '_s{}'.format(args.seed)
+        else:
+            args.savename = ''
+
+    ### If wandb-logging is turned on, initialize the wandb-run here:
+    if args.log_online:
+        import wandb
+        _ = os.system('wandb login {}'.format(args.wandb_key))
+        os.environ['WANDB_API_KEY'] = args.wandb_key
+        save_path = os.path.join(args.path_aux, 'CheckPoints', 'wandb')
+        wandb.init(project=args.project, group=args.group, name=args.savename, dir=save_path,
+                   settings=wandb.Settings(start_method='fork'))
+        wandb.config.update(params_model)
 
     # Model
     model = get_model(params_model)
@@ -71,6 +86,11 @@ def main():
 
             print('mAP@all on validation set after {0} epochs: {1:.4f} (real), {2:.4f} (binary)'
                 .format(epoch + 1, map_, np.mean(valid_data['aps@all_bin'])))
+
+            if args.log_online:
+                for key in valid_data.keys():
+                    valid_data[key] = np.mean(valid_data[key])
+                wandb.log(valid_data)
 
             del valid_data
 
@@ -118,7 +138,7 @@ def main():
                       , valid_data['time_bin']))
         print('Saving qualitative results...', end='')
         path_qualitative_results = os.path.join(path_results, 'qualitative_results')
-        sem_utils.save_qualitative_results(args.root_path, sketch_dir, sketch_sd, photo_dir, photo_sd, splits['te_fls_sk'],
+        utils.save_qualitative_results(args.root_path, sketch_dir, sketch_sd, photo_dir, photo_sd, splits['te_fls_sk'],
                                        splits['te_fls_im'], path_qualitative_results, valid_data['aps@all'],
                                        valid_data['sim_euc'], valid_data['str_sim'], save_image=args.save_image_results,
                                        nq=args.number_qualit_results, best=args.save_best_results)

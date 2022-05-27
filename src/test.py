@@ -17,13 +17,12 @@ import utils
 from logger import AverageMeter
 from models import get_model
 
-np.random.seed(0)
-
 
 def main():
 
     # Parse options
     args = utils.get_args()
+    np.random.seed(args.seed)
     args.test = True
     path_cp, _, path_results = utils.get_paths(args)
 

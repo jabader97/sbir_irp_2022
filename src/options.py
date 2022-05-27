@@ -13,6 +13,8 @@ class Options:
     def __init__(self):
         # Parse options for processing
         parser = argparse.ArgumentParser(description='Zero-Shot Sketch-based Image Retrieval.')
+        # Seed
+        parser.add_argument('--seed', default=1, type=int, help='Random seed for reproducibility.')
         # Model
         parser.add_argument('--model', required=True, default='sem_pcyc', help='SBIR model')
         # Optional argument
@@ -70,6 +72,17 @@ class Options:
                                                                                             'results')
         parser.add_argument('--path_dataset', type=str, default="", help='Dataset path')
         parser.add_argument('--path_aux', type=str, default="", help='Output path')
+
+        # wandb args
+        parser.add_argument('--log_online', action='store_true',
+                            help='Flag. If set, run metrics are stored online in addition to offline logging. Should generally be set.')
+        parser.add_argument('--wandb_key', default='<your_api_key_here>', type=str, help='API key for W&B.')
+        parser.add_argument('--project', default='Sample_Project', type=str,
+                            help='Name of the project - relates to W&B project names. In --savename default setting part of the savename.')
+        parser.add_argument('--group', default='Sample_Group', type=str, help='Name of the group - relates to W&B group names - all runs with same setup but different seeds are logged into one group. \
+                                                                                                   In --savename default setting part of the savename.')
+        parser.add_argument('--savename', default='group_plus_seed', type=str,
+                            help='Run savename - if default, the savename will comprise the project and group name (see wandb_parameters()).')
         self.parser = parser
 
     def parse(self):
