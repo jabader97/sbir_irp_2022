@@ -1,4 +1,4 @@
-from src.models.sem_pcyc import SEM_PCYC
+from models.sem_pcyc import SEM_PCYC
 
 
 def get_model(params_model):

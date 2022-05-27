@@ -13,9 +13,9 @@ import torch.optim as optim
 from torchvision import models
 
 # user defined
-import sbir_irp_2022.src.utils as sem_utils
-from sbir_irp_2022.src.losses import GANLoss
-from sbir_irp_2022.src.logger import AverageMeter
+import src.utils as sem_utils
+from src.losses import GANLoss
+from src.logger import AverageMeter
 
 
 class VGGNetFeats(nn.Module):
