@@ -36,7 +36,7 @@ def main():
         else:
             args.savename = ''
 
-    ### If wandb-logging is turned on, initialize the wandb-run here:
+    # If wandb-logging is turned on, initialize the wandb-run here:
     if args.log_online:
         import wandb
         _ = os.system('wandb login {}'.format(args.wandb_key))
@@ -73,11 +73,9 @@ def main():
         for epoch in range(args.epochs):
 
             # train on training set
-            losses = model.train_once(train_loader, model, epoch, args)
+            losses = model.train_once(train_loader, epoch, args)
 
-            model.scheduler_gen.step()
-            model.scheduler_disc.step()
-            model.scheduler_ae.step()
+            model.scheduler_step(epoch)
 
             # evaluate on validation set, map_ since map is already there
             print('***Validation***')
@@ -105,16 +103,7 @@ def main():
                 early_stop_counter += 1
 
             # Logger step
-            logger.add_scalar('semantic autoencoder loss', losses['aut_enc'].avg)
-            logger.add_scalar('generator adversarial loss', losses['gen_adv'].avg)
-            logger.add_scalar('generator cycle consistency loss', losses['gen_cyc'].avg)
-            logger.add_scalar('generator classification loss', losses['gen_cls'].avg)
-            logger.add_scalar('generator regression loss', losses['gen_reg'].avg)
-            logger.add_scalar('generator loss', losses['gen'].avg)
-            logger.add_scalar('semantic discriminator loss', losses['disc_se'].avg)
-            logger.add_scalar('sketch discriminator loss', losses['disc_sk'].avg)
-            logger.add_scalar('image discriminator loss', losses['disc_im'].avg)
-            logger.add_scalar('discriminator loss', losses['disc'].avg)
+            model.add_to_log(logger, losses)
             logger.add_scalar('mean average precision', map_)
             logger.step()
 

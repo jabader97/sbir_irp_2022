@@ -67,7 +67,7 @@ def main():
                       , valid_data['time_bin']))
         print('Saving qualitative results...', end='')
         path_qualitative_results = os.path.join(path_results, 'qualitative_results')
-        sem_utils.save_qualitative_results(args.root_path, sketch_dir, sketch_sd, photo_dir, photo_sd, splits['te_fls_sk'],
+        utils.save_qualitative_results(args.root_path, sketch_dir, sketch_sd, photo_dir, photo_sd, splits['te_fls_sk'],
                                        splits['te_fls_im'], path_qualitative_results, valid_data['aps@all'],
                                        valid_data['sim_euc'], valid_data['str_sim'], save_image=args.save_image_results,
                                        nq=args.number_qualit_results, best=args.save_best_results)

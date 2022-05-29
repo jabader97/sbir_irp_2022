@@ -195,7 +195,8 @@ def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=
     return splits
 
 
-def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sketches', photo_sd='', sketch_sd=''):
+def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sketches', photo_sd='', sketch_sd='',
+                                 model='', zero_version=''):
 
     path_im = os.path.join(root_path, photo_dir, photo_sd)
     path_sk = os.path.join(root_path, sketch_dir, sketch_sd)
@@ -215,9 +216,40 @@ def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sket
 
     # divide the classes, done according to the "Zero-Shot Sketch-Image Hashing" paper
     np.random.seed(0)
-    tr_classes = np.random.choice(classes, int(0.88 * len(classes)), replace=False)
-    va_classes = np.random.choice(np.setdiff1d(classes, tr_classes), int(0.06 * len(classes)), replace=False)
-    te_classes = np.setdiff1d(classes, np.union1d(tr_classes, va_classes))
+    if model == 'sake':
+        # SAKE uses splits from zeroshot files
+        train_path = os.path.join(root_path, zero_version, 'png_ready_filelist_train.txt')
+        tr_classes = []
+        with open(train_path) as f:
+            for line in f:
+                cur_class = line.split('/')[1]
+                join_symbol = '_'
+                class_reformatted = join_symbol.join(cur_class.split('-'))
+                class_reformatted = join_symbol.join(class_reformatted.split())
+                if class_reformatted not in tr_classes:
+                    tr_classes.append(class_reformatted)
+        validation_path = os.path.join(root_path, zero_version, 'png_ready_filelist_test.txt')
+        va_classes = []
+        with open(validation_path) as f:
+            for line in f:
+                content = line.split()[0].split('/')
+                if not content[1] in va_classes:
+                    va_classes.append(content[1])
+        test_path = os.path.join(root_path, zero_version, 'png_ready_filelist_zero.txt')
+        te_classes = []
+        with open(test_path) as f:
+            for line in f:
+                content = line.split()[0].split('/')
+                if not content[1] in te_classes:
+                    te_classes.append(content[1])
+        tr_classes = np.asarray(tr_classes)
+        va_classes = np.asarray(va_classes)
+        te_classes = np.asarray(te_classes)
+    else:
+        # make splits randomly
+        tr_classes = np.random.choice(classes, int(0.88 * len(classes)), replace=False)
+        va_classes = np.random.choice(np.setdiff1d(classes, tr_classes), int(0.06 * len(classes)), replace=False)
+        te_classes = np.setdiff1d(classes, np.union1d(tr_classes, va_classes))
 
     idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, set_type='train')
     idx_va_im, idx_va_sk = get_coarse_grained_samples(va_classes, fls_im, fls_sk, set_type='valid')
@@ -371,7 +403,8 @@ def get_datasets(args):
         photo_sd = ''
         sketch_sd = ''
         splits = load_files_tuberlin_zeroshot(root_path=args.root_path, photo_dir=photo_dir, sketch_dir=sketch_dir,
-                                                    photo_sd=photo_sd, sketch_sd=sketch_sd)
+                                                    photo_sd=photo_sd, sketch_sd=sketch_sd, model=args.model,
+                                              zero_version=args.zero_version)
     else:
         raise Exception('Wrong dataset.')
 
@@ -402,26 +435,50 @@ def get_datasets(args):
 
     # class dictionary
     args.dict_clss = create_dict_texts(splits['tr_clss_im'])
-
-    data_train = DataGeneratorPaired(args.dataset, args.root_path, photo_dir, sketch_dir, photo_sd, sketch_sd,
-                                     splits['tr_fls_sk'], splits['tr_fls_im'], splits['tr_clss_im'],
-                                     transforms_sketch=transform_sketch, transforms_image=transform_image)
+    cid_mask = True if 'sake' in args.model else False
+    if 'sake' in args.model:
+        data_train_sketch = DataGeneratorSketch(args.dataset, args.root_path, sketch_dir, sketch_sd, splits['tr_fls_sk'],
+                                            splits['tr_clss_sk'], transforms=transform_sketch, cid_mask=cid_mask,
+                                            zero_version=args.zero_version)
+        data_train_image = DataGeneratorImage(args.dataset, args.root_path, photo_dir, photo_sd, splits['tr_fls_im'],
+                                          splits['tr_clss_im'], transforms=transform_image, cid_mask=cid_mask,
+                                          zero_version=args.zero_version)
+        data_train = (data_train_image, data_train_sketch)
+    else:
+        data_train = DataGeneratorPaired(args.dataset, args.root_path, photo_dir, sketch_dir, photo_sd, sketch_sd,
+                                         splits['tr_fls_sk'], splits['tr_fls_im'], splits['tr_clss_im'],
+                                         transforms_sketch=transform_sketch, transforms_image=transform_image)
     data_valid_sketch = DataGeneratorSketch(args.dataset, args.root_path, sketch_dir, sketch_sd, splits['va_fls_sk'],
-                                            splits['va_clss_sk'], transforms=transform_sketch)
+                                            splits['va_clss_sk'], transforms=transform_sketch, cid_mask=False,
+                                            zero_version=args.zero_version)
     data_valid_image = DataGeneratorImage(args.dataset, args.root_path, photo_dir, photo_sd, splits['va_fls_im'],
-                                          splits['va_clss_im'], transforms=transform_image)
+                                          splits['va_clss_im'], transforms=transform_image, cid_mask=False,
+                                          zero_version=args.zero_version)
     data_test_sketch = DataGeneratorSketch(args.dataset, args.root_path, sketch_dir, sketch_sd, splits['te_fls_sk'],
-                                           splits['te_clss_sk'], transforms=transform_sketch)
+                                           splits['te_clss_sk'], transforms=transform_sketch, cid_mask=False,
+                                           zero_version=args.zero_version)
     data_test_image = DataGeneratorImage(args.dataset, args.root_path, photo_dir, photo_sd, splits['te_fls_im'],
-                                         splits['te_clss_im'], transforms=transform_image)
+                                         splits['te_clss_im'], transforms=transform_image, cid_mask=False,
+                                         zero_version=args.zero_version)
     print('Done')
 
-    train_sampler = WeightedRandomSampler(data_train.get_weights(), num_samples=args.epoch_size * args.batch_size,
-                                          replacement=True)
+    if not isinstance(data_train, DataGeneratorPaired):
+        train_sampler_image = WeightedRandomSampler(data_train[0].get_weights(), num_samples=args.epoch_size * args.batch_size,
+                                              replacement=True)
+        train_sampler_sketch = WeightedRandomSampler(data_train[1].get_weights(), num_samples=args.epoch_size * args.batch_size,
+                                              replacement=True)
+        train_loader_image = DataLoader(dataset=data_train[0], batch_size=args.batch_size, sampler=train_sampler_image,
+                                        num_workers=args.num_workers,
+                                        pin_memory=True)
+        train_loader_sketch = DataLoader(dataset=data_train[1], batch_size=args.batch_size, sampler=train_sampler_sketch,
+                                         num_workers=args.num_workers, pin_memory=True)
+        train_loader = (train_loader_image, train_loader_sketch)
+    else:
+        train_sampler = WeightedRandomSampler(data_train.get_weights(), num_samples=args.epoch_size * args.batch_size,
+                                              replacement=True)
+        train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, sampler=train_sampler,
+                                  num_workers=args.num_workers, pin_memory=True)
 
-    # PyTorch train loader
-    train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, sampler=train_sampler,
-                              num_workers=args.num_workers, pin_memory=True)
     # PyTorch valid loader for sketch
     valid_loader_sketch = DataLoader(dataset=data_valid_sketch, batch_size=args.batch_size, shuffle=False,
                                      num_workers=args.num_workers, pin_memory=True)
@@ -442,11 +499,13 @@ def get_params(args):
     # Model parameters
     params_model = dict()
     params_model['model'] = args.model
+    params_model['epochs'] = args.epochs
     # Paths to pre-trained sketch and image models
     path_sketch_model = os.path.join(args.path_aux, 'CheckPoints', args.dataset, 'sketch')
     path_image_model = os.path.join(args.path_aux, 'CheckPoints', args.dataset, 'image')
     params_model['path_sketch_model'] = path_sketch_model
     params_model['path_image_model'] = path_image_model
+    params_model['root_path'] = args.root_path
     # Dimensions
     params_model['dim_out'] = args.dim_out
     params_model['sem_dim'] = args.sem_dim
@@ -473,4 +532,16 @@ def get_params(args):
     params_model['files_semantic_labels'] = args.files_semantic_labels
     # Class dictionary
     params_model['dict_clss'] = args.dict_clss
+    # SAKE specific parameters
+    if "sake" in args.model:
+        params_model['arch'] = args.arch
+        params_model['num_hashing'] = args.num_hashing
+        params_model['num_classes'] = args.num_classes
+        params_model['freeze_features'] = args.freeze_features
+        params_model['ems_loss'] = args.ems_loss
+        params_model['kd_lambda'] = args.kd_lambda
+        params_model['kdneg_lambda'] = args.kdneg_lambda
+        params_model['sake_lambda'] = args.sake_lambda
+        params_model['weight_decay'] = args.weight_decay
+        params_model['zero_version'] = args.zero_version
     return params_model

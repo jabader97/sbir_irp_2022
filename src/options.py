@@ -6,6 +6,7 @@
 
 import utils
 import argparse
+import pretrainedmodels
 
 
 class Options:
@@ -29,18 +30,6 @@ class Options:
         # Semantic models
         parser.add_argument('--semantic-models', nargs='+', default=['word2vec-google-news', 'hieremb-path'],
                             type=str, help='Semantic model')
-        # Weight (on loss) parameters
-        parser.add_argument('--lambda-se', default=10.0, type=float, help='Weight on the semantic model')
-        parser.add_argument('--lambda-im', default=10.0, type=float, help='Weight on the image model')
-        parser.add_argument('--lambda-sk', default=10.0, type=float, help='Weight on the sketch model')
-        parser.add_argument('--lambda-gen-cyc', default=1.0, type=float, help='Weight on cycle consistency loss (gen)')
-        parser.add_argument('--lambda-gen-adv', default=1.0, type=float, help='Weight on adversarial loss (gen)')
-        parser.add_argument('--lambda-gen-cls', default=1.0, type=float, help='Weight on classification loss (gen)')
-        parser.add_argument('--lambda-gen-reg', default=0.1, type=float, help='Weight on regression loss (gen)')
-        parser.add_argument('--lambda-disc-se', default=0.25, type=float, help='Weight on semantic loss (disc)')
-        parser.add_argument('--lambda-disc-sk', default=0.5, type=float, help='Weight on sketch loss (disc)')
-        parser.add_argument('--lambda-disc-im', default=0.5, type=float, help='Weight on image loss (disc)')
-        parser.add_argument('--lambda-regular', default=0.001, type=float, help='Weight on regularizer')
         # Size parameters
         parser.add_argument('--im-sz', default=224, type=int, help='Image size')
         parser.add_argument('--sk-sz', default=224, type=int, help='Sketch size')
@@ -72,7 +61,59 @@ class Options:
                                                                                             'results')
         parser.add_argument('--path_dataset', type=str, default="", help='Dataset path')
         parser.add_argument('--path_aux', type=str, default="", help='Output path')
+        parser = self.sem_pcyc_parse(parser)
+        parser = self.sake_parser(parser)
+        parser = self.wandb_parse(parser)
+        self.parser = parser
 
+    def parse(self):
+        # Parse the arguments
+        return self.parser.parse_args()
+
+    def sem_pcyc_parse(self, parser):
+        # Weight (on loss) parameters
+        parser.add_argument('--lambda-se', default=10.0, type=float, help='Weight on the semantic model')
+        parser.add_argument('--lambda-im', default=10.0, type=float, help='Weight on the image model')
+        parser.add_argument('--lambda-sk', default=10.0, type=float, help='Weight on the sketch model')
+        parser.add_argument('--lambda-gen-cyc', default=1.0, type=float, help='Weight on cycle consistency loss (gen)')
+        parser.add_argument('--lambda-gen-adv', default=1.0, type=float, help='Weight on adversarial loss (gen)')
+        parser.add_argument('--lambda-gen-cls', default=1.0, type=float, help='Weight on classification loss (gen)')
+        parser.add_argument('--lambda-gen-reg', default=0.1, type=float, help='Weight on regression loss (gen)')
+        parser.add_argument('--lambda-disc-se', default=0.25, type=float, help='Weight on semantic loss (disc)')
+        parser.add_argument('--lambda-disc-sk', default=0.5, type=float, help='Weight on sketch loss (disc)')
+        parser.add_argument('--lambda-disc-im', default=0.5, type=float, help='Weight on image loss (disc)')
+        parser.add_argument('--lambda-regular', default=0.001, type=float, help='Weight on regularizer')
+        return parser
+
+    def sake_parser(self, parser):
+        model_names = sorted(name for name in pretrainedmodels.__dict__
+                             if name.islower() and not name.startswith("__"))
+        parser.add_argument('--arch', '-a', metavar='ARCH', default='cse_resnet50',
+                            choices=model_names,
+                            help='model architecture: ' +
+                                 ' | '.join(model_names) +
+                                 ' (default: cse_resnet50)')
+        parser.add_argument('--num_hashing', metavar='N', type=int, default=64,
+                            help='number of hashing dimension (default: 64)')
+        parser.add_argument('--num_classes', metavar='N', type=int, default=220,
+                            help='number of classes (default: 220)')
+        parser.add_argument('-f', '--freeze_features', dest='freeze_features', action='store_true',
+                            help='freeze features of the base network')
+        parser.add_argument('--ems_loss', dest='ems_loss', action='store_true',
+                            help='use ems loss for the training')
+        parser.add_argument('--kd_lambda', metavar='LAMBDA', default='1.0', type=float,
+                            help='lambda for kd loss (default: 1)')
+        parser.add_argument('--kdneg_lambda', metavar='LAMBDA', default='0.3', type=float,
+                            help='lambda for semantic adjustment (default: 0.3)')
+        parser.add_argument('--sake_lambda', metavar='LAMBDA', default='1.0', type=float,
+                            help='lambda for total SAKE loss (default: 1)')
+        parser.add_argument('--zero_version', metavar='VERSION', default='zeroshot', type=str,
+                            help='zeroshot version for training and testing (default: zeroshot)')
+        parser.add_argument('--weight-decay', '--wd', default=5e-4, type=float,
+                            metavar='W', help='weight decay (default: 5e-4)')
+        return parser
+
+    def wandb_parse(self, parser):
         # wandb args
         parser.add_argument('--log_online', action='store_true',
                             help='Flag. If set, run metrics are stored online in addition to offline logging. Should generally be set.')
@@ -83,8 +124,4 @@ class Options:
                                                                                                    In --savename default setting part of the savename.')
         parser.add_argument('--savename', default='group_plus_seed', type=str,
                             help='Run savename - if default, the savename will comprise the project and group name (see wandb_parameters()).')
-        self.parser = parser
-
-    def parse(self):
-        # Parse the arguments
-        return self.parser.parse_args()
+        return parser

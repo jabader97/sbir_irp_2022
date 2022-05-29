@@ -402,11 +402,9 @@ class SEM_PCYC(nn.Module):
 
         return im_em
 
-    @staticmethod
-    def train_once(train_loader, sem_pcyc_model, epoch, args):
+    def train_once(self, train_loader, epoch, args):
         # Switch to train mode
-        sem_pcyc_model.train()
-
+        self.train()
         batch_time = AverageMeter()
         losses_gen_adv = AverageMeter()
         losses_gen_cyc = AverageMeter()
@@ -429,7 +427,7 @@ class SEM_PCYC(nn.Module):
                 sk, im = sk.cuda(), im.cuda()
 
             # Optimize parameters
-            loss = sem_pcyc_model.optimize_params(sk, im, cl)
+            loss = self.optimize_params(sk, im, cl)
 
             # Store losses for visualization
             losses_aut_enc.update(loss['aut_enc'].item(), sk.size(0))
@@ -456,9 +454,31 @@ class SEM_PCYC(nn.Module):
                       .format(epoch + 1, i + 1, len(train_loader), batch_time=batch_time, loss_gen=losses_gen,
                               loss_disc=losses_disc))
 
+            # ==== TODO remove
+            break
+            # =================
 
         losses = {'aut_enc': losses_aut_enc, 'gen_adv': losses_gen_adv, 'gen_cyc': losses_gen_cyc, 'gen_cls':
             losses_gen_cls, 'gen_reg': losses_gen_reg, 'gen': losses_gen, 'disc_se': losses_disc_se, 'disc_sk':
                       losses_disc_sk, 'disc_im': losses_disc_im, 'disc': losses_disc}
 
+
         return losses
+
+    def scheduler_step(self, epoch):
+        self.scheduler_gen.step()
+        self.scheduler_disc.step()
+        self.scheduler_ae.step()
+
+    @staticmethod
+    def add_to_log(logger, losses):
+        logger.add_scalar('semantic autoencoder loss', losses['aut_enc'].avg)
+        logger.add_scalar('generator adversarial loss', losses['gen_adv'].avg)
+        logger.add_scalar('generator cycle consistency loss', losses['gen_cyc'].avg)
+        logger.add_scalar('generator classification loss', losses['gen_cls'].avg)
+        logger.add_scalar('generator regression loss', losses['gen_reg'].avg)
+        logger.add_scalar('generator loss', losses['gen'].avg)
+        logger.add_scalar('semantic discriminator loss', losses['disc_se'].avg)
+        logger.add_scalar('sketch discriminator loss', losses['disc_sk'].avg)
+        logger.add_scalar('image discriminator loss', losses['disc_im'].avg)
+        logger.add_scalar('discriminator loss', losses['disc'].avg)
