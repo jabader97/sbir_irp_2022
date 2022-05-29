@@ -8,7 +8,6 @@ import pretrainedmodels
 import torch.backends.cudnn as cudnn
 import numpy as np
 import os
-import pickle
 from logger import AverageMeter
 from models.senet import cse_resnet50, cse_resnet50_hashing
 from models.resnet import resnet50_hashing
@@ -433,10 +432,6 @@ class SAKE(nn.Module):
                       'KD Loss {losses_kd.val:.4f} ({losses_kd.avg:.4f})\t'
                       .format(epoch + 1, i + 1, len(train_loader_image), losses=self.losses,
                               losses_kd=self.losses_kd))
-
-            # ==== TODO remove
-            break
-            # =================
         losses = {'losses': self.losses, 'losses_kd': self.losses_kd}
         return losses
 
