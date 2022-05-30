@@ -81,7 +81,7 @@ def rec(actual, predicted, k):
 def precak(sim, str_sim, k=None):
     act_lists = [np.nonzero(s)[0] for s in str_sim]
     pred_lists = np.argsort(-sim, axis=1)
-    num_cores = min(multiprocessing.cpu_count(), 32)
+    num_cores = min(multiprocessing.cpu_count(), 10)
     nq = len(act_lists)
     preck = Parallel(n_jobs=num_cores)(delayed(prec)(act_lists[iq], pred_lists[iq], k) for iq in range(nq))
     reck = Parallel(n_jobs=num_cores)(delayed(rec)(act_lists[iq], pred_lists[iq], k) for iq in range(nq))
@@ -90,7 +90,7 @@ def precak(sim, str_sim, k=None):
 
 def aps(sim, str_sim):
     nq = str_sim.shape[0]
-    num_cores = min(multiprocessing.cpu_count(), 32)
+    num_cores = min(multiprocessing.cpu_count(), 10)
     aps = Parallel(n_jobs=num_cores)(delayed(average_precision_score)(str_sim[iq], sim[iq]) for iq in range(nq))
     return aps
 
