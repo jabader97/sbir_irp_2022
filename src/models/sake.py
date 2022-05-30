@@ -363,10 +363,10 @@ class SAKE(nn.Module):
         self.zero_version = params_model['zero_version']
 
         if torch.cuda.is_available():
-            self.model.cuda()
-            self.model_t.cuda()
-            self.criterion_train.cuda()
-            self.criterion_train_kd.cuda()
+            self.model = self.model.cuda()
+            self.model_t = self.model_t.cuda()
+            self.criterion_train = self.criterion_train.cuda()
+            self.criterion_train_kd = self.criterion_train_kd.cuda()
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr,
                                           weight_decay=params_model['weight_decay'])
@@ -387,7 +387,9 @@ class SAKE(nn.Module):
             if epoch in [20, 25]:
                 new_m = self.curr_m * 2
                 print("update m at epoch {}: from {} to {}".format(epoch, self.curr_m, new_m))
-                self.criterion_train = EMSLoss(new_m).cuda()
+                self.criterion_train = EMSLoss(new_m)
+                if torch.cuda.is_available():
+                    self.criterion_train = self.criterion_train.cuda()
                 self.curr_m = new_m
         self.model.train()
         self.model_t.train()
@@ -415,10 +417,10 @@ class SAKE(nn.Module):
             target_all = target_all.type(torch.LongTensor).view(-1, )
             cid_mask_all = cid_mask_all.float()
             if torch.cuda.is_available():
-                input_all.cuda()
-                tag_all.cuda()
-                target_all.cuda()
-                cid_mask_all.cuda()
+                input_all = input_all.cuda()
+                tag_all = tag_all.cuda()
+                target_all = target_all.cuda()
+                cid_mask_all = cid_mask_all.cuda()
             output, output_kd = self.model(input_all, tag_all)
             with torch.no_grad():
                 output_t = self.model_t(input_all, tag_all)
@@ -438,14 +440,14 @@ class SAKE(nn.Module):
     def get_sketch_embeddings(self, sk):
         tag = torch.zeros(sk.size()[0], 1)
         if torch.cuda.is_available():
-            tag.cuda()
+            tag = tag.cuda()
         output, _ = self.model(sk, tag)
         return output
 
     def get_image_embeddings(self, im):
         tag = torch.ones(im.size()[0], 1)
         if torch.cuda.is_available():
-            tag.cuda()
+            tag = tag.cuda()
         output, _ = self.model(im, tag)
         return output
 
