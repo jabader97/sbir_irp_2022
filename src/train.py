@@ -118,6 +118,12 @@ def main():
         print("Loaded best model '{0}' (epoch {1}; mAP@all {2:.4f})".format(best_model_file, epoch, best_map))
         print('***Test***')
         valid_data = validate(test_loader_sketch, test_loader_image, model, epoch, args)
+
+        if args.log_online:
+            for key in valid_data.keys():
+                valid_data["test_" + key] = np.mean(valid_data[key])
+            wandb.log(valid_data)
+
         print('Results on test set: mAP@all = {1:.4f}, Prec@100 = {0:.4f}, mAP@200 = {3:.4f}, Prec@200 = {2:.4f}, '
               'Time = {4:.6f} || mAP@all (binary) = {6:.4f}, Prec@100 (binary) = {5:.4f}, mAP@200 (binary) = {8:.4f}, '
               'Prec@200 (binary) = {7:.4f}, Time (binary) = {9:.6f} '
