@@ -217,24 +217,24 @@ def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sket
     # divide the classes, done according to the "Zero-Shot Sketch-Image Hashing" paper
     np.random.seed(0)
     if model == 'sake':
-        # SAKE uses splits from zeroshot files
+        # SAKE uses splits from zeroshot files. Note this implementation is a bit different
+        # from the original paper: this splits the classes into train/validation, the
+        # original paper split the images in each class
+
+        # get train and validation classes
         train_path = os.path.join(root_path, zero_version, 'png_ready_filelist_train.txt')
-        tr_classes = []
+        tr_and_va_classes = []
         with open(train_path) as f:
             for line in f:
                 cur_class = line.split('/')[1]
                 join_symbol = '_'
                 class_reformatted = join_symbol.join(cur_class.split('-'))
                 class_reformatted = join_symbol.join(class_reformatted.split())
-                if class_reformatted not in tr_classes:
-                    tr_classes.append(class_reformatted)
-        validation_path = os.path.join(root_path, zero_version, 'png_ready_filelist_test.txt')
-        va_classes = []
-        with open(validation_path) as f:
-            for line in f:
-                content = line.split()[0].split('/')
-                if not content[1] in va_classes:
-                    va_classes.append(content[1])
+                if class_reformatted not in tr_and_va_classes:
+                    tr_and_va_classes.append(class_reformatted)
+        tr_classes = np.random.choice(tr_and_va_classes, int(0.93 * len(tr_and_va_classes)), replace=False)
+        va_classes = np.setdiff1d(tr_and_va_classes, tr_classes)
+        # get test classes
         test_path = os.path.join(root_path, zero_version, 'png_ready_filelist_zero.txt')
         te_classes = []
         with open(test_path) as f:
