@@ -374,6 +374,7 @@ class SAKE(nn.Module):
         self.losses = AverageMeter()
         self.losses_kd = AverageMeter()
         self.class_to_int_dict = self.get_class_int_from_str_dict()
+        self.sake_lambda = params_model['sake_lambda']
         cudnn.benchmark = True
 
     def scheduler_step(self, epoch):
@@ -428,13 +429,22 @@ class SAKE(nn.Module):
             loss_kd = self.criterion_train_kd(output_kd, output_t * args.kd_lambda, tag_all, cid_mask_all * args.kdneg_lambda)
             self.losses.update(loss.item(), input.size(0))
             self.losses_kd.update(loss_kd.item(), input.size(0))
+
+            # compute gradient and take step
+            self.optimizer.zero_grad()
+            loss_total = loss + self.sake_lambda * loss_kd
+            loss_total.backward()
+            self.optimizer.step()
+
             if (i + 1) % args.log_interval == 0:
                 print('[Train] Epoch: [{0}][{1}/{2}]\t'
                       'Loss {losses.val:.4f} ({losses.avg:.4f})\t'
                       'KD Loss {losses_kd.val:.4f} ({losses_kd.avg:.4f})\t'
+                      'Loss total {loss_total:.4f} ({loss_total:.4f})\t'
                       .format(epoch + 1, i + 1, len(train_loader_image), losses=self.losses,
-                              losses_kd=self.losses_kd))
-        losses = {'losses': self.losses, 'losses_kd': self.losses_kd}
+                              losses_kd=self.losses_kd, loss_total=loss_total))
+        loss_total = self.losses + self.sake_lambda * self.losses_kd
+        losses = {'losses': self.losses, 'losses_kd': self.losses_kd, 'loss_total': loss_total}
         return losses
 
     def get_sketch_embeddings(self, sk):
