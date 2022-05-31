@@ -362,9 +362,9 @@ def get_paths(args):
         str_aux = os.path.join(str_aux, 'generalized')
     model_name = '+'.join(args.semantic_models)
     root_path = os.path.join(args.path_dataset, args.dataset)
-    path_cp = os.path.join(args.path_aux, 'CheckPoints', args.dataset, str_aux, model_name, str(args.dim_out))
-    path_log = os.path.join(args.path_aux, 'LogFiles', args.dataset, str_aux, model_name, str(args.dim_out))
-    path_results = os.path.join(args.path_aux, 'Results', args.dataset, str_aux, model_name, str(args.dim_out))
+    path_cp = os.path.join(args.path_aux, 'CheckPoints', args.dataset, str_aux, model_name, str(args.dim_out), args.model)
+    path_log = os.path.join(args.path_aux, 'LogFiles', args.dataset, str_aux, model_name, str(args.dim_out), args.model)
+    path_results = os.path.join(args.path_aux, 'Results', args.dataset, str_aux, model_name, str(args.dim_out), args.model)
     files_semantic_labels = []
     sem_dim = 0
     for f in args.semantic_models:

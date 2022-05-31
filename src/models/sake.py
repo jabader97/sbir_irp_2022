@@ -443,7 +443,7 @@ class SAKE(nn.Module):
                       'Loss total {loss_total:.4f} ({loss_total:.4f})\t'
                       .format(epoch + 1, i + 1, len(train_loader_image), losses=self.losses,
                               losses_kd=self.losses_kd, loss_total=loss_total))
-            break
+
         loss_total = self.losses.avg + self.sake_lambda * self.losses_kd.avg
         losses = {'losses': self.losses, 'losses_kd': self.losses_kd, 'loss_total': loss_total}
         return losses
