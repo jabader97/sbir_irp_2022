@@ -136,7 +136,8 @@ def get_coarse_grained_samples(classes, fls_im, fls_sk, set_type='train', filter
 
 
 def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=False, photo_dir='photo',
-                                sketch_dir='sketch', photo_sd='tx_000000000000', sketch_sd='tx_000000000000'):
+                                sketch_dir='sketch', photo_sd='tx_000000000000', sketch_sd='tx_000000000000_ready',
+                                model='', zero_version=''):
     # paths of sketch and image
     path_im = os.path.join(root_path, photo_dir, photo_sd)
     path_sk = os.path.join(root_path, sketch_dir, sketch_sd)
@@ -151,9 +152,41 @@ def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=
 
     # all the unique classes
     classes = sorted(os.listdir(path_sk))
+    if classes[0] == '.DS_Store':
+        classes.pop(0)
 
     # divide the classes
-    if split_eccv_2018:
+    if model == 'sake':
+        # SAKE uses splits from zeroshot files. Note this implementation is a bit different
+        # from the original paper: this splits the classes into train/validation, the
+        # original paper split the images in each class
+
+        # get train and validation classes
+        train_path = os.path.join(root_path, zero_version, 'cname_cid.txt')
+        tr_and_va_classes = []
+        with open(train_path) as f:
+            for line in f:
+                join_symbol = '_'
+                class_orig = line.split()[0]
+                class_reformatted = join_symbol.join(class_orig.split('-'))
+                if class_reformatted not in tr_and_va_classes:
+                    tr_and_va_classes.append(class_reformatted)
+        tr_classes = np.random.choice(tr_and_va_classes, int(0.93 * len(tr_and_va_classes)), replace=False)
+        va_classes = np.setdiff1d(tr_and_va_classes, tr_classes)
+        # get test classes
+        test_path = os.path.join(root_path, zero_version, 'cname_cid_zero.txt')
+        te_classes = []
+        with open(test_path) as f:
+            for line in f:
+                join_symbol = '_'
+                class_orig = line.split()[0]
+                class_reformatted = join_symbol.join(class_orig.split('-'))
+                if not class_reformatted in te_classes:
+                    te_classes.append(class_reformatted)
+        tr_classes = np.asarray(tr_classes)
+        va_classes = np.asarray(va_classes)
+        te_classes = np.asarray(te_classes)
+    elif split_eccv_2018:
         # According to Yelamarthi et al., "A Zero-Shot Framework for Sketch Based Image Retrieval", ECCV 2018.
         cur_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         with open(os.path.join(cur_path, "test_classes_eccv_2018.txt")) as fp:
@@ -213,6 +246,9 @@ def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sket
 
     # all the unique classes
     classes = np.unique(clss_im)
+    join_symbol = '_'
+    for i, c in enumerate(classes):
+        classes[i] = join_symbol.join(c.split('-'))
 
     # divide the classes, done according to the "Zero-Shot Sketch-Image Hashing" paper
     np.random.seed(0)
@@ -391,12 +427,13 @@ def get_datasets(args):
             photo_sd = ''
         else:
             photo_dir = 'photo'
-            photo_sd = 'tx_000000000000'
+            photo_sd = 'tx_000000000000_ready'
         sketch_dir = 'sketch'
-        sketch_sd = 'tx_000000000000'
+        sketch_sd = 'tx_000000000000_ready'
         splits = load_files_sketchy_zeroshot(root_path=args.root_path, split_eccv_2018=args.split_eccv_2018,
-                                                   photo_dir=photo_dir, sketch_dir=sketch_dir, photo_sd=photo_sd,
-                                                   sketch_sd=sketch_sd)
+                                             photo_dir=photo_dir, sketch_dir=sketch_dir, photo_sd=photo_sd,
+                                             sketch_sd=sketch_sd, model=args.model,
+                                             zero_version=args.zero_version)
     elif args.dataset == 'TU-Berlin':
         photo_dir = 'images'
         sketch_dir = 'sketches'
