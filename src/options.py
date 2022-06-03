@@ -59,6 +59,7 @@ class Options:
                                                                                    ' saved')
         parser.add_argument('--save-best-results', action='store_true', default=False, help='Whether to save the best '
                                                                                             'results')
+        parser.add_argument('--normalize', action='store_true', default=False, help='Whether to normalize images')
         parser.add_argument('--path_dataset', type=str, default="", help='Dataset path')
         parser.add_argument('--path_aux', type=str, default="", help='Output path')
         parser = self.sem_pcyc_parse(parser)

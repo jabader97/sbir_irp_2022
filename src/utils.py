@@ -415,8 +415,15 @@ def get_paths(args):
 
 def get_datasets(args):
     # Parameters for transforming the images
-    transform_image = transforms.Compose([transforms.Resize((args.im_sz, args.im_sz)), transforms.ToTensor()])
-    transform_sketch = transforms.Compose([transforms.Resize((args.sk_sz, args.sk_sz)), transforms.ToTensor()])
+    transform_image_list = [transforms.Resize((args.im_sz, args.im_sz)), transforms.ToTensor()]
+    transform_sketch_list = [transforms.Resize((args.sk_sz, args.sk_sz)), transforms.ToTensor()]
+    if args.normalize:
+        immean = [0.485, 0.456, 0.406]  # RGB channel mean for imagenet
+        imstd = [0.229, 0.224, 0.225]
+        transform_image_list.append(transforms.Normalize(immean, imstd))
+        transform_sketch_list.append(transforms.Normalize(immean, imstd))
+    transform_image = transforms.Compose(transform_image_list)
+    transform_sketch = transforms.Compose(transform_sketch_list)
 
     # Load the dataset
     print('Loading data...', end='')
