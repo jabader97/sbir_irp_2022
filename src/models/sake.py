@@ -371,8 +371,6 @@ class SAKE(nn.Module):
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr,
                                           weight_decay=params_model['weight_decay'])
 
-        self.losses = AverageMeter()
-        self.losses_kd = AverageMeter()
         self.class_to_int_dict = self.get_class_int_from_str_dict()
         self.sake_lambda = params_model['sake_lambda']
         cudnn.benchmark = True
@@ -384,6 +382,8 @@ class SAKE(nn.Module):
             param_group['lr'] = lr
 
     def train_once(self, train_loader, epoch, args):
+        losses = AverageMeter()
+        losses_kd = AverageMeter()
         if args.ems_loss:
             if epoch in [20, 25]:
                 new_m = self.curr_m * 2
@@ -411,24 +411,23 @@ class SAKE(nn.Module):
             input_all = input_all[shuffle_idx]
             tag_all = tag_all[shuffle_idx]
             target_all = target_all[shuffle_idx]
-            cid_mask_all = cid_mask_all[shuffle_idx]
+            cid_mask_all = cid_mask_all[shuffle_idx].float()
 
-            input_all = input_all
-            tag_all = tag_all
             target_all = target_all.type(torch.LongTensor).view(-1, )
-            cid_mask_all = cid_mask_all.float()
             if torch.cuda.is_available():
                 input_all = input_all.cuda()
                 tag_all = tag_all.cuda()
                 target_all = target_all.cuda()
                 cid_mask_all = cid_mask_all.cuda()
+
             output, output_kd = self.model(input_all, tag_all)
             with torch.no_grad():
                 output_t = self.model_t(input_all, tag_all)
+
             loss = self.criterion_train(output, target_all)
             loss_kd = self.criterion_train_kd(output_kd, output_t * args.kd_lambda, tag_all, cid_mask_all * args.kdneg_lambda)
-            self.losses.update(loss.item(), input.size(0))
-            self.losses_kd.update(loss_kd.item(), input.size(0))
+            losses.update(loss.item(), input.size(0))
+            losses_kd.update(loss_kd.item(), input.size(0))
 
             # compute gradient and take step
             self.optimizer.zero_grad()
@@ -441,12 +440,12 @@ class SAKE(nn.Module):
                       'Loss {losses.val:.4f} ({losses.avg:.4f})\t'
                       'KD Loss {losses_kd.val:.4f} ({losses_kd.avg:.4f})\t'
                       'Loss total {loss_total:.4f} ({loss_total:.4f})\t'
-                      .format(epoch + 1, i + 1, len(train_loader_image), losses=self.losses,
-                              losses_kd=self.losses_kd, loss_total=loss_total))
+                      .format(epoch + 1, i + 1, len(train_loader_image), losses=losses,
+                              losses_kd=losses_kd, loss_total=loss_total))
 
-        loss_total = self.losses.avg + self.sake_lambda * self.losses_kd.avg
-        losses = {'losses': self.losses, 'losses_kd': self.losses_kd, 'loss_total': loss_total}
-        return losses
+        loss_total = losses.avg + self.sake_lambda * losses_kd.avg
+        loss_stats = {'losses': losses, 'losses_kd': losses_kd, 'loss_total': loss_total}
+        return loss_stats
 
     def get_sketch_embeddings(self, sk):
         tag = torch.zeros(sk.size()[0], 1)
