@@ -157,7 +157,14 @@ class SEM_PCYC(nn.Module):
         # Semantic model embedding
         self.sem = []
         for f in params_model['files_semantic_labels']:
-            self.sem.append(np.load(f, allow_pickle=True).item())
+            new_dict = np.load(f, allow_pickle=True).item()
+            if 'word2vec-google-news' in f and 'TU-Berlin' in f:
+                # fix table_lamp -> tablelamp
+                table_lamp = new_dict['table_lamp']
+                del new_dict['table_lamp']
+                new_dict['tablelamp'] = table_lamp
+            self.sem.append(new_dict)
+
         self.dict_clss = params_model['dict_clss']
         print('Done')
 
