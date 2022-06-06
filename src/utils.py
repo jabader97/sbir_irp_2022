@@ -154,14 +154,22 @@ def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=
     classes = sorted(os.listdir(path_sk))
     if classes[0] == '.DS_Store':
         classes.pop(0)
-
-    # divide the classes
+    # get test classes from SAKE split
+    test_path = os.path.join(root_path, zero_version, 'cname_cid_zero.txt')
+    te_classes = []
+    with open(test_path) as f:
+        for line in f:
+            join_symbol = '_'
+            class_orig = line.split()[0]
+            class_reformatted = join_symbol.join(class_orig.split('-'))
+            if not class_reformatted in te_classes:
+                te_classes.append(class_reformatted)
+    te_classes = np.asarray(te_classes)
+    # get train and validation classes
     if model == 'sake':
         # SAKE uses splits from zeroshot files. Note this implementation is a bit different
         # from the original paper: this splits the classes into train/validation, the
         # original paper split the images in each class
-
-        # get train and validation classes
         train_path = os.path.join(root_path, zero_version, 'cname_cid.txt')
         tr_and_va_classes = []
         with open(train_path) as f:
@@ -173,19 +181,9 @@ def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=
                     tr_and_va_classes.append(class_reformatted)
         tr_classes = np.random.choice(tr_and_va_classes, int(0.93 * len(tr_and_va_classes)), replace=False)
         va_classes = np.setdiff1d(tr_and_va_classes, tr_classes)
-        # get test classes
-        test_path = os.path.join(root_path, zero_version, 'cname_cid_zero.txt')
-        te_classes = []
-        with open(test_path) as f:
-            for line in f:
-                join_symbol = '_'
-                class_orig = line.split()[0]
-                class_reformatted = join_symbol.join(class_orig.split('-'))
-                if not class_reformatted in te_classes:
-                    te_classes.append(class_reformatted)
+
         tr_classes = np.asarray(tr_classes)
         va_classes = np.asarray(va_classes)
-        te_classes = np.asarray(te_classes)
     elif split_eccv_2018:
         # According to Yelamarthi et al., "A Zero-Shot Framework for Sketch Based Image Retrieval", ECCV 2018.
         cur_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -194,11 +192,12 @@ def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=
             va_classes = te_classes
             tr_classes = np.setdiff1d(classes, np.union1d(te_classes, va_classes))
     else:
-        # According to Shen et al., "Zero-Shot Sketch-Image Hashing", CVPR 2018.
-        np.random.seed(0)
-        tr_classes = np.random.choice(classes, int(0.8 * len(classes)), replace=False)
-        va_classes = np.random.choice(np.setdiff1d(classes, tr_classes), int(0.1 * len(classes)), replace=False)
-        te_classes = np.setdiff1d(classes, np.union1d(tr_classes, va_classes))
+        # Make train and validation splits randomly
+        tr_classes = np.random.choice(np.setdiff1d(classes, te_classes), int(0.75 * len(classes)), replace=False)
+        va_classes = np.setdiff1d(classes, np.union1d(tr_classes, te_classes))
+        # tr_classes = np.random.choice(classes, int(0.8 * len(classes)), replace=False)
+        # va_classes = np.random.choice(np.setdiff1d(classes, tr_classes), int(0.1 * len(classes)), replace=False)
+        # te_classes = np.setdiff1d(classes, np.union1d(tr_classes, va_classes))
 
     idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, set_type='train',
                                                       filter_sketch=filter_sketch)
@@ -250,14 +249,22 @@ def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sket
     for i, c in enumerate(classes):
         classes[i] = join_symbol.join(c.split('-'))
 
-    # divide the classes, done according to the "Zero-Shot Sketch-Image Hashing" paper
     np.random.seed(0)
+    # get test classes from SAKE split
+    test_path = os.path.join(root_path, zero_version, 'png_ready_filelist_zero.txt')
+    te_classes = []
+    with open(test_path) as f:
+        for line in f:
+            content = line.split()[0].split('/')
+            if not content[1] in te_classes:
+                te_classes.append(content[1])
+    te_classes = np.asarray(te_classes)
+    # get train and validation classes
     if model == 'sake':
         # SAKE uses splits from zeroshot files. Note this implementation is a bit different
         # from the original paper: this splits the classes into train/validation, the
         # original paper split the images in each class
 
-        # get train and validation classes
         train_path = os.path.join(root_path, zero_version, 'png_ready_filelist_train.txt')
         tr_and_va_classes = []
         with open(train_path) as f:
@@ -270,22 +277,15 @@ def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sket
                     tr_and_va_classes.append(class_reformatted)
         tr_classes = np.random.choice(tr_and_va_classes, int(0.93 * len(tr_and_va_classes)), replace=False)
         va_classes = np.setdiff1d(tr_and_va_classes, tr_classes)
-        # get test classes
-        test_path = os.path.join(root_path, zero_version, 'png_ready_filelist_zero.txt')
-        te_classes = []
-        with open(test_path) as f:
-            for line in f:
-                content = line.split()[0].split('/')
-                if not content[1] in te_classes:
-                    te_classes.append(content[1])
         tr_classes = np.asarray(tr_classes)
         va_classes = np.asarray(va_classes)
-        te_classes = np.asarray(te_classes)
     else:
-        # make splits randomly
-        tr_classes = np.random.choice(classes, int(0.88 * len(classes)), replace=False)
-        va_classes = np.random.choice(np.setdiff1d(classes, tr_classes), int(0.06 * len(classes)), replace=False)
-        te_classes = np.setdiff1d(classes, np.union1d(tr_classes, va_classes))
+        # make train/validation splits randomly
+        tr_classes = np.random.choice(np.setdiff1d(classes, te_classes), int(0.80 * len(classes)), replace=False)
+        va_classes = np.setdiff1d(classes, np.union1d(tr_classes, te_classes))
+        # tr_classes = np.random.choice(classes, int(0.88 * len(classes)), replace=False)
+        # va_classes = np.random.choice(np.setdiff1d(classes, tr_classes), int(0.06 * len(classes)), replace=False)
+        # te_classes = np.setdiff1d(classes, np.union1d(tr_classes, va_classes))
 
     idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, set_type='train')
     idx_va_im, idx_va_sk = get_coarse_grained_samples(va_classes, fls_im, fls_sk, set_type='valid')
@@ -447,16 +447,16 @@ def get_datasets(args):
         photo_sd = ''
         sketch_sd = ''
         splits = load_files_tuberlin_zeroshot(root_path=args.root_path, photo_dir=photo_dir, sketch_dir=sketch_dir,
-                                                    photo_sd=photo_sd, sketch_sd=sketch_sd, model=args.model,
+                                              photo_sd=photo_sd, sketch_sd=sketch_sd, model=args.model,
                                               zero_version=args.zero_version)
     else:
         raise Exception('Wrong dataset.')
 
     # Combine the valid and test set into test set
-    splits['te_fls_sk'] = np.concatenate((splits['va_fls_sk'], splits['te_fls_sk']), axis=0)
-    splits['te_clss_sk'] = np.concatenate((splits['va_clss_sk'], splits['te_clss_sk']), axis=0)
-    splits['te_fls_im'] = np.concatenate((splits['va_fls_im'], splits['te_fls_im']), axis=0)
-    splits['te_clss_im'] = np.concatenate((splits['va_clss_im'], splits['te_clss_im']), axis=0)
+    # splits['te_fls_sk'] = np.concatenate((splits['va_fls_sk'], splits['te_fls_sk']), axis=0)
+    # splits['te_clss_sk'] = np.concatenate((splits['va_clss_sk'], splits['te_clss_sk']), axis=0)
+    # splits['te_fls_im'] = np.concatenate((splits['va_fls_im'], splits['te_fls_im']), axis=0)
+    # splits['te_clss_im'] = np.concatenate((splits['va_clss_im'], splits['te_clss_im']), axis=0)
 
     if args.gzs_sbir:
         perc = 0.2
