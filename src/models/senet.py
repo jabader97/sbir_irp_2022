@@ -513,7 +513,7 @@ class CSENet_hashing(nn.Module):
         self.ems = ems
         self.second_last_linear = nn.Linear(512 * block.expansion, hashing_dim)
         if self.ems:
-            self.last_linear = EMSLayer(num_classes, hasing_dim)
+            self.last_linear = EMSLayer(num_classes, hashing_dim)
         else:
             self.last_linear = nn.Linear(hashing_dim, num_classes)
 

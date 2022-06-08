@@ -242,7 +242,9 @@ class CSEResnetModel_KDHashing(nn.Module):
 
         # Freeze the resnet layers
         if freeze_features:
-            for ff in self.features:
+            layers = [self.original_model.layer1, self.original_model.layer2, self.original_model.layer3,
+                      self.original_model.layer4]
+            for ff in layers:
                 for pp in ff.parameters():
                     pp.requires_grad = False
 
