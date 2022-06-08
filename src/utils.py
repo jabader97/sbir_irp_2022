@@ -398,7 +398,7 @@ def get_paths(args):
         str_aux = os.path.join(str_aux, 'generalized')
     model_name = '+'.join(args.semantic_models)
     root_path = os.path.join(args.path_dataset, args.dataset)
-    path_cp = os.path.join(args.path_aux, 'CheckPoints', args.dataset, str_aux, model_name, str(args.dim_out), args.model)
+    path_cp = os.path.join(args.path_aux, 'CheckPoints', args.dataset, str_aux, model_name, str(args.dim_out), args.savename)
     path_log = os.path.join(args.path_aux, 'LogFiles', args.dataset, str_aux, model_name, str(args.dim_out), args.model)
     path_results = os.path.join(args.path_aux, 'Results', args.dataset, str_aux, model_name, str(args.dim_out), args.model)
     files_semantic_labels = []
@@ -507,14 +507,10 @@ def get_datasets(args):
     print('Done')
 
     if not isinstance(data_train, DataGeneratorPaired):
-        train_sampler_image = WeightedRandomSampler(data_train[0].get_weights(), num_samples=args.epoch_size * args.batch_size,
-                                              replacement=True)
-        train_sampler_sketch = WeightedRandomSampler(data_train[1].get_weights(), num_samples=args.epoch_size * args.batch_size,
-                                              replacement=True)
-        train_loader_image = DataLoader(dataset=data_train[0], batch_size=args.batch_size, sampler=train_sampler_image,
+        train_loader_image = DataLoader(dataset=data_train[0], batch_size=args.batch_size,
                                         num_workers=args.num_workers,
                                         pin_memory=True)
-        train_loader_sketch = DataLoader(dataset=data_train[1], batch_size=args.batch_size, sampler=train_sampler_sketch,
+        train_loader_sketch = DataLoader(dataset=data_train[1], batch_size=args.batch_size,
                                          num_workers=args.num_workers, pin_memory=True)
         train_loader = (train_loader_image, train_loader_sketch)
     else:

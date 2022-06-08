@@ -20,6 +20,11 @@ def main():
 
     args = utils.get_args()
     np.random.seed(args.seed)
+    if args.savename == 'group_plus_seed':
+        if args.log_online:
+            args.savename = args.group + '_s{}'.format(args.seed)
+        else:
+            args.savename = ''
     path_cp, path_log, path_results = utils.get_paths(args)
 
     print('Checkpoint path: {}'.format(path_cp))
@@ -29,12 +34,6 @@ def main():
     train_loader, valid_loader_sketch, valid_loader_image, test_loader_sketch, test_loader_image,\
         photo_dir, sketch_dir, splits, photo_sd, sketch_sd = utils.get_datasets(args)
     params_model = utils.get_params(args)
-
-    if args.savename == 'group_plus_seed':
-        if args.log_online:
-            args.savename = args.group + '_s{}'.format(args.seed)
-        else:
-            args.savename = ''
 
     # If wandb-logging is turned on, initialize the wandb-run here:
     if args.log_online:
