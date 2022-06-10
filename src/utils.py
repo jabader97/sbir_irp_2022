@@ -328,6 +328,7 @@ def save_qualitative_results(root, sketch_dir, sketch_sd, photo_dir, photo_sd, f
         ind_sk = np.argsort(-aps)[:nq]
     else:
         np.random.seed(0)
+        temp = len(aps)
         ind_sk = np.random.choice(len(aps), nq, replace=False)
 
     # create a text file for results
@@ -507,7 +508,7 @@ def get_datasets(args):
     print('Done')
 
     if not isinstance(data_train, DataGeneratorPaired):
-        num_samples = args.epoch_size * args.batch_size * 100
+        num_samples = args.epoch_size * args.batch_size
         train_sampler_image = WeightedRandomSampler(data_train[0].get_weights(),  num_samples=num_samples,
                                                     replacement=True)
         train_sampler_sketch = WeightedRandomSampler(data_train[1].get_weights(), num_samples=num_samples,

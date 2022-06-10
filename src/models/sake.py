@@ -453,15 +453,19 @@ class SAKE(nn.Module):
         tag = torch.zeros(sk.size()[0], 1)
         if torch.cuda.is_available():
             tag = tag.cuda()
-        output, _ = self.model(sk, tag)
-        return output
+        features = self.model.module.original_model.features(sk, tag)
+        features = self.model.module.original_model.hashing(features)
+        features = F.normalize(features)
+        return features
 
     def get_image_embeddings(self, im):
         tag = torch.ones(im.size()[0], 1)
         if torch.cuda.is_available():
             tag = tag.cuda()
-        output, _ = self.model(im, tag)
-        return output
+        features = self.model.module.original_model.features(im, tag)
+        features = self.model.module.original_model.hashing(features)
+        features = F.normalize(features)
+        return features
 
     def get_class_int_from_str_dict(self):
         class_to_int_path = os.path.join(self.root, self.zero_version, 'cname_cid.txt')
