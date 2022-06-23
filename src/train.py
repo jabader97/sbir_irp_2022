@@ -4,6 +4,7 @@
 # system, numpy
 import os
 import numpy as np
+import time
 
 # pytorch, torch vision
 import torch
@@ -11,7 +12,7 @@ import torch.backends.cudnn as cudnn
 
 # user defined
 import utils
-from logger import Logger
+from logger import Logger, AverageMeter
 from test import validate
 from models import get_model
 
@@ -31,8 +32,10 @@ def main():
     print('Logger path: {}'.format(path_log))
     print('Result path: {}'.format(path_results))
 
+    dataset_creation_time = time.time()
     train_loader, valid_loader_sketch, valid_loader_image, test_loader_sketch, test_loader_image,\
         photo_dir, sketch_dir, splits, photo_sd, sketch_sd = utils.get_datasets(args)
+    dataset_creation_time = time.time() - dataset_creation_time
     params_model = utils.get_params(args)
 
     # If wandb-logging is turned on, initialize the wandb-run here:
@@ -46,7 +49,9 @@ def main():
         wandb.config.update(params_model)
 
     # Model
+    model_load_time = time.time()
     model = get_model(params_model)
+    model_load_time = time.time() - model_load_time
 
     cudnn.benchmark = True
 
@@ -63,8 +68,22 @@ def main():
         model = model.cuda()
     print('Done')
 
+    if args.log_online:
+        wandb.log({'dataset_creation_time': dataset_creation_time, 'model_load_time': model_load_time})
+
     best_map = 0
     early_stop_counter = 0
+
+    loss_per_epoch_time = AverageMeter()
+    validation_per_epoch_time = AverageMeter()
+    save_checkpoint_time = AverageMeter()
+
+    valid_time_info = {'sketch_embedding_time': AverageMeter(), 'image_embedding_time': AverageMeter(),
+                            'similarity_time': AverageMeter(), 'binary_encoding_time': AverageMeter(),
+                            'apsall_time': AverageMeter(), 'aps200_time': AverageMeter(),
+                            'prec100_time': AverageMeter(), 'prec200_time': AverageMeter(),
+                            'apsall_bin_time': AverageMeter(), 'aps200_bin_time': AverageMeter(),
+                            'prec100_bin_time': AverageMeter(), 'prec200_bin_time': AverageMeter()}
 
     # Epoch for loop
     if not args.test:
@@ -72,13 +91,17 @@ def main():
         for epoch in range(args.epochs):
 
             # train on training set
-            losses = model.train_once(train_loader, epoch, args)
+            loss_per_epoch_time_start = time.time()
+            losses, time_info = model.train_once(train_loader, epoch, args)
+            loss_per_epoch_time.update(time.time() - loss_per_epoch_time_start)
 
             model.scheduler_step(epoch)
 
             # evaluate on validation set, map_ since map is already there
             print('***Validation***')
-            valid_data = validate(valid_loader_sketch, valid_loader_image, model, epoch, args)
+            validation_per_epoch_time_start = time.time()
+            valid_data, valid_time_info_new = validate(valid_loader_sketch, valid_loader_image, model, epoch, args)
+            validation_per_epoch_time.update(time.time() - validation_per_epoch_time_start)
             map_ = np.mean(valid_data['aps@all'])
 
             print('mAP@all on validation set after {0} epochs: {1:.4f} (real), {2:.4f} (binary)'
@@ -94,8 +117,10 @@ def main():
             if map_ > best_map:
                 best_map = map_
                 early_stop_counter = 0
+                save_checkpoint_time_start = time.time()
                 utils.save_checkpoint({'epoch': epoch + 1, 'state_dict': model.state_dict(), 'best_map':
                     best_map}, directory=path_cp)
+                save_checkpoint_time.update(time.time() - save_checkpoint_time_start)
             else:
                 if args.early_stop == early_stop_counter:
                     break
@@ -105,6 +130,30 @@ def main():
             model.add_to_log(logger, losses)
             logger.add_scalar('mean average precision', map_)
             logger.step()
+
+            # time_info['loss_per_epoch_time'] = loss_per_epoch_time
+            # time_info['validation_per_epoch_time'] = validation_per_epoch_time
+            # time_info['save_checkpoint_time'] = save_checkpoint_time
+            # for key in valid_time_info_new.keys():
+            #     valid_time_info[key].update(valid_time_info_new[key])
+            #     time_info[key] = valid_time_info[key]
+            #
+            # time_info_to_log = {}
+            # for key in time_info.keys():
+            #     time_info_to_log[key] = time_info[key].avg
+
+            if args.log_online:
+                time_info['loss_per_epoch_time'] = loss_per_epoch_time
+                time_info['validation_per_epoch_time'] = validation_per_epoch_time
+                time_info['save_checkpoint_time'] = save_checkpoint_time
+                for key in valid_time_info_new.keys():
+                    valid_time_info[key].update(valid_time_info_new[key])
+                    time_info[key] = valid_time_info[key]
+
+                time_info_to_log = {}
+                for key in time_info.keys():
+                    time_info_to_log[key] = time_info[key].avg
+                wandb.log(time_info_to_log)
 
     # load the best model yet
     best_model_file = os.path.join(path_cp, 'model_best.pth')

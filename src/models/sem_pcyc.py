@@ -256,6 +256,11 @@ class SEM_PCYC(nn.Module):
         self.se_em_hat2 = torch.zeros(1)
         print('Done')
 
+        # time variables
+        self.time_info = {'optimize_params_time': AverageMeter(), 'numeric_class_time': AverageMeter(),
+                          'semantic_embedding_time': AverageMeter(), 'forward_pass_time': AverageMeter(),
+                          'backward_pass_time': AverageMeter()}
+
     def load_weight(self, model, path, type='sketch'):
         if torch.cuda.is_available():
             checkpoint = torch.load(os.path.join(path, 'model_best.pth'))
@@ -372,11 +377,14 @@ class SEM_PCYC(nn.Module):
     def optimize_params(self, sk, im, cl):
 
         # Get numeric classes
+        numeric_class_time = time.time()
         num_cls = torch.from_numpy(sem_utils.numeric_classes(cl, self.dict_clss))
         if torch.cuda.is_available():
             num_cls = num_cls.cuda()
+        self.time_info['numeric_class_time'].update(time.time() - numeric_class_time)
 
         # Get the semantic embeddings for cl
+        semantic_embedding_time = time.time()
         se = np.zeros((len(cl), self.sem_dim), dtype=np.float32)
         for i, c in enumerate(cl):
             se_c = np.array([], dtype=np.float32)
@@ -386,14 +394,20 @@ class SEM_PCYC(nn.Module):
         se = torch.from_numpy(se)
         if torch.cuda.is_available():
             se = se.cuda()
+        self.time_info['semantic_embedding_time'].update(time.time() - semantic_embedding_time)
 
         # Forward pass
+        forward_pass_time = time.time()
         self.forward(sk, im, se)
+        self.time_info['forward_pass_time'].update(time.time() - forward_pass_time)
 
         # Backward pass
+        backward_pass_time = time.time()
         loss = self.backward(se, num_cls)
+        self.time_info['backward_pass_time'].update(time.time() - backward_pass_time)
 
-        return loss
+        return loss, {numeric_class_time: numeric_class_time, semantic_embedding_time: semantic_embedding_time,
+                      forward_pass_time: forward_pass_time, 'backward_pass_time': backward_pass_time}
 
     def get_sketch_embeddings(self, sk):
 
@@ -434,7 +448,9 @@ class SEM_PCYC(nn.Module):
                 sk, im = sk.cuda(), im.cuda()
 
             # Optimize parameters
-            loss = self.optimize_params(sk, im, cl)
+            optimize_params_time = time.time()
+            loss, time_info = self.optimize_params(sk, im, cl)
+            self.time_info['optimize_params_time'].update(time.time() - optimize_params_time)
 
             # Store losses for visualization
             losses_aut_enc.update(loss['aut_enc'].item(), sk.size(0))
@@ -464,9 +480,7 @@ class SEM_PCYC(nn.Module):
         losses = {'aut_enc': losses_aut_enc, 'gen_adv': losses_gen_adv, 'gen_cyc': losses_gen_cyc, 'gen_cls':
             losses_gen_cls, 'gen_reg': losses_gen_reg, 'gen': losses_gen, 'disc_se': losses_disc_se, 'disc_sk':
                       losses_disc_sk, 'disc_im': losses_disc_im, 'disc': losses_disc}
-
-
-        return losses
+        return losses, self.time_info
 
     def scheduler_step(self, epoch):
         self.scheduler_gen.step()

@@ -87,6 +87,7 @@ def validate(valid_loader_sketch, valid_loader_image, model, epoch, args):
     # Start counting time
     time_start = time.time()
 
+    sketch_embedding_time = time.time()
     for i, (sk, cls_sk) in enumerate(valid_loader_sketch):
 
         if torch.cuda.is_available():
@@ -113,6 +114,8 @@ def validate(valid_loader_sketch, valid_loader_image, model, epoch, args):
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   .format(epoch + 1, i + 1, len(valid_loader_sketch), batch_time=batch_time))
 
+    sketch_embedding_time = time.time() - sketch_embedding_time
+    image_embedding_time = time.time()
     for i, (im, cls_im) in enumerate(valid_loader_image):
 
         if torch.cuda.is_available():
@@ -139,42 +142,68 @@ def validate(valid_loader_sketch, valid_loader_image, model, epoch, args):
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   .format(epoch + 1, i + 1, len(valid_loader_image), batch_time=batch_time))
 
+    image_embedding_time = time.time() - image_embedding_time
     # Compute mAP
     print('Computing evaluation metrics...', end='')
 
     # Compute similarity
+    similarity_time = time.time()
     t = time.time()
     sim_euc = np.exp(-cdist(acc_sk_em, acc_im_em, metric='euclidean'))
     time_euc = (time.time() - t) / acc_cls_sk.shape[0]
+    similarity_time = time.time() - similarity_time
 
     # binary encoding with ITQ
+    binary_encoding_time = time.time()
     acc_sk_em_bin, acc_im_em_bin = itq.compressITQ(acc_sk_em, acc_im_em)
     t = time.time()
     sim_bin = np.exp(-cdist(acc_sk_em_bin, acc_im_em_bin, metric='hamming'))
     time_bin = (time.time() - t) / acc_cls_sk.shape[0]
+    binary_encoding_time = time.time() - binary_encoding_time
 
     # similarity of classes or ground truths
     # Multiplied by 1 for boolean to integer conversion
     str_sim = (np.expand_dims(acc_cls_sk, axis=1) == np.expand_dims(acc_cls_im, axis=0)) * 1
 
+    apsall_time = time.time()
     apsall = utils.apsak(sim_euc, str_sim)
+    apsall_time = time.time() - apsall_time
+    aps200_time = time.time()
     aps200 = utils.apsak(sim_euc, str_sim, k=200)
+    aps200_time = time.time() - aps200_time
+    prec100_time = time.time()
     prec100, _ = utils.precak(sim_euc, str_sim, k=100)
+    prec100_time = time.time() - prec100_time
+    prec200_time = time.time()
     prec200, _ = utils.precak(sim_euc, str_sim, k=200)
+    prec200_time = time.time() - prec200_time
 
+    apsall_bin_time = time.time()
     apsall_bin = utils.apsak(sim_bin, str_sim)
+    apsall_bin_time = time.time() - apsall_bin_time
+    aps200_bin_time = time.time()
     aps200_bin = utils.apsak(sim_bin, str_sim, k=200)
+    aps200_bin_time = time.time() - aps200_bin_time
+    prec100_bin_time = time.time()
     prec100_bin, _ = utils.precak(sim_bin, str_sim, k=100)
+    prec100_bin_time = time.time() - prec100_bin_time
+    prec200_bin_time = time.time()
     prec200_bin, _ = utils.precak(sim_bin, str_sim, k=200)
+    prec200_bin_time = time.time() - prec200_bin_time
 
     valid_data = {'aps@all': apsall, 'aps@200': aps200, 'prec@100': prec100, 'prec@200': prec200, 'sim_euc': sim_euc,
                   'time_euc': time_euc, 'aps@all_bin': apsall_bin, 'aps@200_bin': aps200_bin, 'prec@100_bin':
                       prec100_bin, 'prec@200_bin': prec200_bin, 'sim_bin': sim_bin, 'time_bin': time_bin, 'str_sim':
                       str_sim}
+    time_info = {'sketch_embedding_time': sketch_embedding_time, 'image_embedding_time': image_embedding_time,
+                 'similarity_time': similarity_time, 'binary_encoding_time': binary_encoding_time,
+                 'apsall_time': apsall_time, 'aps200_time': aps200_time, 'prec100_time': prec100_time,
+                 'prec200_time': prec200_time, 'apsall_bin_time': apsall_bin_time, 'aps200_bin_time': aps200_bin_time,
+                 'prec100_bin_time': prec100_bin_time, 'prec200_bin_time': prec200_bin_time}
 
     print('Done')
 
-    return valid_data
+    return valid_data, time_info
 
 
 if __name__ == '__main__':
