@@ -74,34 +74,23 @@ def main():
     best_map = 0
     early_stop_counter = 0
 
-    loss_per_epoch_time = AverageMeter()
-    validation_per_epoch_time = AverageMeter()
-    save_checkpoint_time = AverageMeter()
-
-    valid_time_info = {'sketch_embedding_time': AverageMeter(), 'image_embedding_time': AverageMeter(),
-                            'similarity_time': AverageMeter(), 'binary_encoding_time': AverageMeter(),
-                            'apsall_time': AverageMeter(), 'aps200_time': AverageMeter(),
-                            'prec100_time': AverageMeter(), 'prec200_time': AverageMeter(),
-                            'apsall_bin_time': AverageMeter(), 'aps200_bin_time': AverageMeter(),
-                            'prec100_bin_time': AverageMeter(), 'prec200_bin_time': AverageMeter()}
-
     # Epoch for loop
     if not args.test:
         print('***Train***')
         for epoch in range(args.epochs):
 
             # train on training set
-            loss_per_epoch_time_start = time.time()
+            loss_per_epoch_time = time.time()
             losses, time_info = model.train_once(train_loader, epoch, args)
-            loss_per_epoch_time.update(time.time() - loss_per_epoch_time_start)
+            time_info['train_one_epoch_time'] = time.time() - loss_per_epoch_time
 
             model.scheduler_step(epoch)
 
             # evaluate on validation set, map_ since map is already there
             print('***Validation***')
-            validation_per_epoch_time_start = time.time()
-            valid_data, valid_time_info_new = validate(valid_loader_sketch, valid_loader_image, model, epoch, args)
-            validation_per_epoch_time.update(time.time() - validation_per_epoch_time_start)
+            validation_per_epoch_time = time.time()
+            valid_data, valid_time_info = validate(valid_loader_sketch, valid_loader_image, model, epoch, args)
+            time_info['validation_per_epoch_time'] = time.time() - validation_per_epoch_time
             map_ = np.mean(valid_data['aps@all'])
 
             print('mAP@all on validation set after {0} epochs: {1:.4f} (real), {2:.4f} (binary)'
@@ -117,10 +106,10 @@ def main():
             if map_ > best_map:
                 best_map = map_
                 early_stop_counter = 0
-                save_checkpoint_time_start = time.time()
+                save_checkpoint_time = time.time()
                 utils.save_checkpoint({'epoch': epoch + 1, 'state_dict': model.state_dict(), 'best_map':
                     best_map}, directory=path_cp)
-                save_checkpoint_time.update(time.time() - save_checkpoint_time_start)
+                time_info['save_checkpoint_time'] = time.time() - save_checkpoint_time
             else:
                 if args.early_stop == early_stop_counter:
                     break
@@ -131,29 +120,8 @@ def main():
             logger.add_scalar('mean average precision', map_)
             logger.step()
 
-            # time_info['loss_per_epoch_time'] = loss_per_epoch_time
-            # time_info['validation_per_epoch_time'] = validation_per_epoch_time
-            # time_info['save_checkpoint_time'] = save_checkpoint_time
-            # for key in valid_time_info_new.keys():
-            #     valid_time_info[key].update(valid_time_info_new[key])
-            #     time_info[key] = valid_time_info[key]
-            #
-            # time_info_to_log = {}
-            # for key in time_info.keys():
-            #     time_info_to_log[key] = time_info[key].avg
-
             if args.log_online:
-                time_info['loss_per_epoch_time'] = loss_per_epoch_time
-                time_info['validation_per_epoch_time'] = validation_per_epoch_time
-                time_info['save_checkpoint_time'] = save_checkpoint_time
-                for key in valid_time_info_new.keys():
-                    valid_time_info[key].update(valid_time_info_new[key])
-                    time_info[key] = valid_time_info[key]
-
-                time_info_to_log = {}
-                for key in time_info.keys():
-                    time_info_to_log[key] = time_info[key].avg
-                wandb.log(time_info_to_log)
+                wandb.log(time_info)
 
     # load the best model yet
     best_model_file = os.path.join(path_cp, 'model_best.pth')
