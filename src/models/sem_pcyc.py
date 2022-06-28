@@ -443,6 +443,7 @@ class SEM_PCYC(nn.Module):
 
         # Start counting time
         time_start = time.time()
+        print('Length of train loader is {}'.format(len(train_loader)))
 
         for i, (sk, im, cl) in enumerate(train_loader):
 
