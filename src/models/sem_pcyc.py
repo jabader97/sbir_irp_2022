@@ -449,7 +449,7 @@ class SEM_PCYC(nn.Module):
         train_once_setup_time = time.time() - train_once_setup_time
         train_once_loop_time = time.time()
         for i, (sk, im, cl, ti) in enumerate(train_loader):
-            self.time_info['get_item_time'].update(ti)
+            self.time_info['get_item_time'].update(ti.sum())
             # Transfer sk and im to cuda
             if torch.cuda.is_available():
                 sk, im = sk.cuda(), im.cuda()
