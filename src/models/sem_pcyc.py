@@ -437,6 +437,7 @@ class SEM_PCYC(nn.Module):
         losses_disc = AverageMeter()
         losses_aut_enc = AverageMeter()
         optimize_params_time = AverageMeter()
+        self.time_info['get_item_time'] = AverageMeter()
         self.time_info['numeric_class_time'] = AverageMeter()
         self.time_info['semantic_embedding_time'] = AverageMeter()
         self.time_info['forward_pass_time'] = AverageMeter()
@@ -447,8 +448,8 @@ class SEM_PCYC(nn.Module):
         print('Length of train loader is {}'.format(len(train_loader)))
         train_once_setup_time = time.time() - train_once_setup_time
         train_once_loop_time = time.time()
-        for i, (sk, im, cl) in enumerate(train_loader):
-
+        for i, (sk, im, cl, ti) in enumerate(train_loader):
+            self.time_info['get_item_time'].update(ti)
             # Transfer sk and im to cuda
             if torch.cuda.is_available():
                 sk, im = sk.cuda(), im.cuda()
@@ -482,6 +483,7 @@ class SEM_PCYC(nn.Module):
                       'Disc. Loss {loss_disc.val:.4f} ({loss_disc.avg:.4f})\t'
                       .format(epoch + 1, i + 1, len(train_loader), batch_time=batch_time, loss_gen=losses_gen,
                               loss_disc=losses_disc))
+
         train_once_loop_time = time.time() - train_once_loop_time
         train_once_saveinfo_time = time.time()
 
@@ -497,6 +499,7 @@ class SEM_PCYC(nn.Module):
         self.time_info['train_once_loop_time'] = train_once_loop_time
         self.time_info['train_once_setup_time'] = train_once_setup_time
         self.time_info['train_once_saveinfo_time'] = time.time() - train_once_saveinfo_time
+        self.time_info['get_item_time'] = self.time_info['get_item_time'].avg
         return losses, self.time_info
 
     def scheduler_step(self, epoch):
