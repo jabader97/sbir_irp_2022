@@ -499,7 +499,7 @@ class SEM_PCYC(nn.Module):
         self.time_info['train_once_loop_time'] = train_once_loop_time
         self.time_info['train_once_setup_time'] = train_once_setup_time
         self.time_info['train_once_saveinfo_time'] = time.time() - train_once_saveinfo_time
-        self.time_info['get_item_time'] = self.time_info['get_item_time'].avg
+        self.time_info['get_item_time'] = self.time_info['get_item_time'].avg.item()
         return losses, self.time_info
 
     def scheduler_step(self, epoch):
