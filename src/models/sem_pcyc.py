@@ -423,6 +423,7 @@ class SEM_PCYC(nn.Module):
 
     def train_once(self, train_loader, epoch, args):
         # Switch to train mode
+        train_once_setup_time = time.time()
         self.train()
         batch_time = AverageMeter()
         losses_gen_adv = AverageMeter()
@@ -444,7 +445,8 @@ class SEM_PCYC(nn.Module):
         # Start counting time
         time_start = time.time()
         print('Length of train loader is {}'.format(len(train_loader)))
-
+        train_once_setup_time = time.time() - train_once_setup_time
+        train_once_loop_time = time.time()
         for i, (sk, im, cl) in enumerate(train_loader):
 
             # Transfer sk and im to cuda
@@ -480,6 +482,8 @@ class SEM_PCYC(nn.Module):
                       'Disc. Loss {loss_disc.val:.4f} ({loss_disc.avg:.4f})\t'
                       .format(epoch + 1, i + 1, len(train_loader), batch_time=batch_time, loss_gen=losses_gen,
                               loss_disc=losses_disc))
+        train_once_loop_time = time.time() - train_once_loop_time
+        train_once_saveinfo_time = time.time()
 
         losses = {'aut_enc': losses_aut_enc, 'gen_adv': losses_gen_adv, 'gen_cyc': losses_gen_cyc, 'gen_cls':
             losses_gen_cls, 'gen_reg': losses_gen_reg, 'gen': losses_gen, 'disc_se': losses_disc_se, 'disc_sk':
@@ -490,6 +494,9 @@ class SEM_PCYC(nn.Module):
         self.time_info['semantic_embedding_time'] = self.time_info['semantic_embedding_time'].avg
         self.time_info['forward_pass_time'] = self.time_info['forward_pass_time'].avg
         self.time_info['backward_pass_time'] = self.time_info['backward_pass_time'].avg
+        self.time_info['train_once_loop_time'] = train_once_loop_time
+        self.time_info['train_once_setup_time'] = train_once_setup_time
+        self.time_info['train_once_saveinfo_time'] = time.time() - train_once_saveinfo_time
         return losses, self.time_info
 
     def scheduler_step(self, epoch):

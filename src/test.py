@@ -78,6 +78,7 @@ def main():
 
 
 def validate(valid_loader_sketch, valid_loader_image, model, epoch, args):
+    validate_setup_time = time.time()
 
     # Switch to test mode
     model.eval()
@@ -86,7 +87,7 @@ def validate(valid_loader_sketch, valid_loader_image, model, epoch, args):
 
     # Start counting time
     time_start = time.time()
-
+    validate_setup_time = time.time() - validate_setup_time
     sketch_embedding_time = time.time()
     for i, (sk, cls_sk) in enumerate(valid_loader_sketch):
 
@@ -199,7 +200,8 @@ def validate(valid_loader_sketch, valid_loader_image, model, epoch, args):
                  'similarity_time': similarity_time, 'binary_encoding_time': binary_encoding_time,
                  'apsall_time': apsall_time, 'aps200_time': aps200_time, 'prec100_time': prec100_time,
                  'prec200_time': prec200_time, 'apsall_bin_time': apsall_bin_time, 'aps200_bin_time': aps200_bin_time,
-                 'prec100_bin_time': prec100_bin_time, 'prec200_bin_time': prec200_bin_time}
+                 'prec100_bin_time': prec100_bin_time, 'prec200_bin_time': prec200_bin_time,
+                 'validate_setup_time': validate_setup_time}
 
     print('Done')
 
