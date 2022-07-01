@@ -507,22 +507,14 @@ def get_datasets(args):
     print('Done')
 
     if not isinstance(data_train, DataGeneratorPaired):
-        num_samples = args.epoch_size * args.batch_size * 100
-        train_sampler_image = WeightedRandomSampler(data_train[0].get_weights(),  num_samples=num_samples,
-                                                    replacement=True)
-        train_sampler_sketch = WeightedRandomSampler(data_train[1].get_weights(), num_samples=num_samples,
-                                                     replacement=True)
-        train_loader_image = DataLoader(dataset=data_train[0], batch_size=args.batch_size, sampler=train_sampler_image,
-                                        num_workers=args.num_workers,
+        train_loader_image = DataLoader(dataset=data_train[0], batch_size=args.batch_size, num_workers=args.num_workers,
                                         pin_memory=True)
-        train_loader_sketch = DataLoader(dataset=data_train[1], batch_size=args.batch_size, sampler=train_sampler_sketch,
+        train_loader_sketch = DataLoader(dataset=data_train[1], batch_size=args.batch_size,
                                          num_workers=args.num_workers, pin_memory=True)
         train_loader = (train_loader_image, train_loader_sketch)
     else:
-        train_sampler = WeightedRandomSampler(data_train.get_weights(), num_samples=args.epoch_size * args.batch_size,
-                                              replacement=True)
-        train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, sampler=train_sampler,
-                                  num_workers=args.num_workers, pin_memory=True)
+        train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, num_workers=args.num_workers,
+                                  pin_memory=True)
 
     # PyTorch valid loader for sketch
     valid_loader_sketch = DataLoader(dataset=data_valid_sketch, batch_size=args.batch_size, shuffle=False,

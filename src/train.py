@@ -121,7 +121,7 @@ def main():
             logger.step()
 
             if args.log_online:
-                for key in valid_time_info.keys()
+                for key in valid_time_info.keys():
                     time_info[key] = valid_time_info[key]
                 wandb.log(time_info)
 
