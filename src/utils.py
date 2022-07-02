@@ -107,7 +107,7 @@ def apsak(sim, str_sim, k=None):
     return aps_
 
 
-def get_coarse_grained_samples(classes, fls_im, fls_sk, set_type='train', filter_sketch=True):
+def get_coarse_grained_samples(classes, fls_im, fls_sk, paired=False, filter_sketch=True):
 
     idx_im_ret = np.array([], dtype=np.int)
     idx_sk_ret = np.array([], dtype=np.int)
@@ -117,7 +117,7 @@ def get_coarse_grained_samples(classes, fls_im, fls_sk, set_type='train', filter
     for i, c in enumerate(classes):
         idx1 = np.where(clss_im == c)[0]
         idx2 = np.where(clss_sk == c)[0]
-        if set_type == 'train':
+        if paired:
             idx_cp = list(itertools.product(idx1, idx2))
             if len(idx_cp) > 100000:
                 random.seed(i)
@@ -199,11 +199,12 @@ def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=
         # va_classes = np.random.choice(np.setdiff1d(classes, tr_classes), int(0.1 * len(classes)), replace=False)
         # te_classes = np.setdiff1d(classes, np.union1d(tr_classes, va_classes))
 
-    idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, set_type='train',
+    train_paired = False if model == 'sake' else True
+    idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, paired=train_paired,
                                                       filter_sketch=filter_sketch)
-    idx_va_im, idx_va_sk = get_coarse_grained_samples(va_classes, fls_im, fls_sk, set_type='valid',
+    idx_va_im, idx_va_sk = get_coarse_grained_samples(va_classes, fls_im, fls_sk, paired=False,
                                                       filter_sketch=filter_sketch)
-    idx_te_im, idx_te_sk = get_coarse_grained_samples(te_classes, fls_im, fls_sk, set_type='test',
+    idx_te_im, idx_te_sk = get_coarse_grained_samples(te_classes, fls_im, fls_sk, paired=False,
                                                       filter_sketch=filter_sketch)
 
     splits = dict()
@@ -287,9 +288,10 @@ def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sket
         # va_classes = np.random.choice(np.setdiff1d(classes, tr_classes), int(0.06 * len(classes)), replace=False)
         # te_classes = np.setdiff1d(classes, np.union1d(tr_classes, va_classes))
 
-    idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, set_type='train')
-    idx_va_im, idx_va_sk = get_coarse_grained_samples(va_classes, fls_im, fls_sk, set_type='valid')
-    idx_te_im, idx_te_sk = get_coarse_grained_samples(te_classes, fls_im, fls_sk, set_type='test')
+    train_paired = False if model == 'sake' else True
+    idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, paired=train_paired)
+    idx_va_im, idx_va_sk = get_coarse_grained_samples(va_classes, fls_im, fls_sk, paired=False)
+    idx_te_im, idx_te_sk = get_coarse_grained_samples(te_classes, fls_im, fls_sk, paired=False)
 
     splits = dict()
 
@@ -452,12 +454,6 @@ def get_datasets(args):
     else:
         raise Exception('Wrong dataset.')
 
-    # Combine the valid and test set into test set
-    # splits['te_fls_sk'] = np.concatenate((splits['va_fls_sk'], splits['te_fls_sk']), axis=0)
-    # splits['te_clss_sk'] = np.concatenate((splits['va_clss_sk'], splits['te_clss_sk']), axis=0)
-    # splits['te_fls_im'] = np.concatenate((splits['va_fls_im'], splits['te_fls_im']), axis=0)
-    # splits['te_clss_im'] = np.concatenate((splits['va_clss_im'], splits['te_clss_im']), axis=0)
-
     if args.gzs_sbir:
         perc = 0.2
         _, idx_sk = np.unique(splits['tr_fls_sk'], return_index=True)
@@ -513,8 +509,10 @@ def get_datasets(args):
                                          num_workers=args.num_workers, pin_memory=True)
         train_loader = (train_loader_image, train_loader_sketch)
     else:
-        train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, num_workers=args.num_workers,
-                                  pin_memory=True)
+        train_sampler = WeightedRandomSampler(data_train.get_weights(), num_samples=args.epoch_size * args.batch_size,
+                                              replacement=True)
+        train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, sampler=train_sampler,
+                                  num_workers=args.num_workers, pin_memory=True)
 
     # PyTorch valid loader for sketch
     valid_loader_sketch = DataLoader(dataset=data_valid_sketch, batch_size=args.batch_size, shuffle=False,

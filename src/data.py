@@ -44,7 +44,7 @@ class DataGeneratorPaired(data.Dataset):
             sk = self.transforms_sketch(sk)
         if self.cid_mask:
             mask = self.cid_matrix[cls]
-            return sk, im, cls, mask
+            return sk, im, cls, mask, (time.time() - get_item_time)
         return sk, im, cls, (time.time() - get_item_time)
 
     def __len__(self):
@@ -101,6 +101,7 @@ class DataGeneratorSketch(data.Dataset):
             self.cid_matrix = self.get_class_name_from_int(int_cid_matrix, zero_version)
 
     def __getitem__(self, item):
+        get_item_time = time.time()
         sk = ImageOps.invert(Image.open(os.path.join(self.root, self.sketch_dir, self.sketch_sd, self.fls_sk[item]))).\
             convert(mode='RGB')
         cls_sk = self.clss_sk[item]
@@ -108,9 +109,9 @@ class DataGeneratorSketch(data.Dataset):
             sk = self.transforms(sk)
         if self.cid_mask:
             mask = self.cid_matrix[cls_sk]
-            return sk, cls_sk, mask
+            return sk, cls_sk, mask, (time.time() - get_item_time)
 
-        return sk, cls_sk
+        return sk, cls_sk, (time.time() - get_item_time)
 
     def __len__(self):
         return len(self.fls_sk)
@@ -167,14 +168,15 @@ class DataGeneratorImage(data.Dataset):
             self.cid_matrix = self.get_class_name_from_int(int_cid_matrix, zero_version)
 
     def __getitem__(self, item):
+        get_item_time = time.time()
         im = Image.open(os.path.join(self.root, self.photo_dir, self.photo_sd, self.fls_im[item])).convert(mode='RGB')
         cls_im = self.clss_im[item]
         if self.transforms is not None:
             im = self.transforms(im)
         if self.cid_mask:
             mask = self.cid_matrix[cls_im]
-            return im, cls_im, mask
-        return im, cls_im
+            return im, cls_im, mask, (time.time() - get_item_time)
+        return im, cls_im, (time.time() - get_item_time)
 
     def __len__(self):
         return len(self.fls_im)
