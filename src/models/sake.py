@@ -7,7 +7,7 @@ import math
 import pretrainedmodels
 import torch.backends.cudnn as cudnn
 import numpy as np
-import os
+import os, time
 from logger import AverageMeter
 from models.senet import cse_resnet50, cse_resnet50_hashing
 from models.resnet import resnet50_hashing
@@ -384,8 +384,17 @@ class SAKE(nn.Module):
             param_group['lr'] = lr
 
     def train_once(self, train_loader, epoch, args):
+        train_setup_time = time.time()
         losses = AverageMeter()
         losses_kd = AverageMeter()
+        get_item_time = AverageMeter()
+        reformat_data_time = AverageMeter()
+        forward_pass_time = AverageMeter()
+        forward_pass_s_time = AverageMeter()
+        forward_pass_t_time = AverageMeter()
+        loss_time = AverageMeter()
+        backward_pass_time = AverageMeter()
+
         if args.ems_loss:
             if epoch in [20, 25]:
                 new_m = self.curr_m * 2
@@ -398,7 +407,10 @@ class SAKE(nn.Module):
         self.model_t.train()
         train_loader_image = train_loader[0]
         train_loader_sketch = train_loader[1]
-        for i, ((input, target, cid_mask), (input_ext, target_ext, cid_mask_ext)) in enumerate(zip(train_loader_image, train_loader_sketch)):
+        train_setup_time = time.time() - train_setup_time
+        for i, ((input, target, cid_mask, ti), (input_ext, target_ext, cid_mask_ext, ti_ext)) in enumerate(zip(train_loader_image, train_loader_sketch)):
+            get_item_time.update(ti.sum() + ti_ext.sum())
+            one_loop_time_start = time.time()
             target = torch.Tensor([int(self.class_to_int_dict[t]) for t in target])
             target_ext = torch.Tensor([int(self.class_to_int_dict[t]) for t in target_ext])
             input_all = torch.cat([input, input_ext], dim=0)
@@ -421,20 +433,27 @@ class SAKE(nn.Module):
                 tag_all = tag_all.cuda()
                 target_all = target_all.cuda()
                 cid_mask_all = cid_mask_all.cuda()
-
+            reformat_data_time.update(time.time() - one_loop_time_start)
+            forward_pass_s_time_start = time.time()
             output, output_kd = self.model(input_all, tag_all)
+            forward_pass_s_time.update(time.time() - forward_pass_s_time_start)
             with torch.no_grad():
+                forward_pass_t_time_start = time.time()
                 output_t = self.model_t(input_all, tag_all)
-
+                forward_pass_t_time.update(time.time() - forward_pass_t_time_start)
+                forward_pass_time.update(time.time() - forward_pass_s_time_start)
+            loss_time_start = time.time()
             loss = self.criterion_train(output, target_all)
             loss_kd = self.criterion_train_kd(output_kd, output_t * args.kd_lambda, tag_all, cid_mask_all * args.kdneg_lambda)
             losses.update(loss.item(), input.size(0))
             losses_kd.update(loss_kd.item(), input.size(0))
-
+            loss_time.update(time.time() - loss_time_start)
             # compute gradient and take step
             self.optimizer.zero_grad()
             loss_total = loss + self.sake_lambda * loss_kd
+            backward_pass_time_start = time.time()
             loss_total.backward()
+            backward_pass_time.update(time.time() - backward_pass_time_start)
             self.optimizer.step()
 
             if (i + 1) % args.log_interval == 0:
@@ -447,7 +466,11 @@ class SAKE(nn.Module):
 
         loss_total = losses.avg + self.sake_lambda * losses_kd.avg
         loss_stats = {'losses': losses, 'losses_kd': losses_kd, 'loss_total': loss_total}
-        return loss_stats
+        time_stats = {'train_setup_time': train_setup_time, 'get_item_time': get_item_time.avg,
+                      'reformat_data_time': reformat_data_time.avg, 'forward_pass_s_time': forward_pass_s_time.avg,
+                      'forward_pass_t_time': forward_pass_t_time.avg, 'loss_time': loss_time.avg,
+                      'backward_pass_time': backward_pass_time.avg, 'forward_pass_time': forward_pass_time.avg}
+        return loss_stats, time_stats
 
     def get_sketch_embeddings(self, sk):
         tag = torch.zeros(sk.size()[0], 1)
