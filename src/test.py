@@ -79,6 +79,8 @@ def main():
 
 def validate(valid_loader_sketch, valid_loader_image, model, epoch, args):
     validate_setup_time = time.time()
+    valid_get_sketch_time = AverageMeter()
+    valid_get_image_time = AverageMeter()
 
     # Switch to test mode
     model.eval()
@@ -89,8 +91,8 @@ def validate(valid_loader_sketch, valid_loader_image, model, epoch, args):
     time_start = time.time()
     validate_setup_time = time.time() - validate_setup_time
     sketch_embedding_time = time.time()
-    for i, (sk, cls_sk) in enumerate(valid_loader_sketch):
-
+    for i, (sk, cls_sk, ti) in enumerate(valid_loader_sketch):
+        valid_get_sketch_time.update(ti.sum())
         if torch.cuda.is_available():
             sk = sk.cuda()
 
@@ -117,7 +119,8 @@ def validate(valid_loader_sketch, valid_loader_image, model, epoch, args):
 
     sketch_embedding_time = time.time() - sketch_embedding_time
     image_embedding_time = time.time()
-    for i, (im, cls_im) in enumerate(valid_loader_image):
+    for i, (im, cls_im, ti) in enumerate(valid_loader_image):
+        valid_get_image_time.update(ti.sum())
 
         if torch.cuda.is_available():
             im = im.cuda()
@@ -201,7 +204,8 @@ def validate(valid_loader_sketch, valid_loader_image, model, epoch, args):
                  'apsall_time': apsall_time, 'aps200_time': aps200_time, 'prec100_time': prec100_time,
                  'prec200_time': prec200_time, 'apsall_bin_time': apsall_bin_time, 'aps200_bin_time': aps200_bin_time,
                  'prec100_bin_time': prec100_bin_time, 'prec200_bin_time': prec200_bin_time,
-                 'validate_setup_time': validate_setup_time}
+                 'validate_setup_time': validate_setup_time, 'valid_get_sketch_time': valid_get_sketch_time.avg,
+                 'valid_get_image_time': valid_get_image_time.avg}
 
     print('Done')
 
