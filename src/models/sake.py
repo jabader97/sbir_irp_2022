@@ -346,7 +346,7 @@ class SAKE(nn.Module):
     def __init__(self, params_model):
         super(SAKE, self).__init__()
         self.model = CSEResnetModel_KDHashing(params_model['arch'], params_model['num_hashing'],
-                                              params_model['num_classes'],
+                                              params_model['num_clss'],
                                               freeze_features=params_model["freeze_features"],
                                               ems=params_model['ems_loss'])
         self.model = nn.DataParallel(self.model)

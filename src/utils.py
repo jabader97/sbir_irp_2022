@@ -503,10 +503,19 @@ def get_datasets(args):
     print('Done')
 
     if not isinstance(data_train, DataGeneratorPaired):
-        train_loader_image = DataLoader(dataset=data_train[0], batch_size=args.batch_size, num_workers=args.num_workers,
-                                        pin_memory=True)
-        train_loader_sketch = DataLoader(dataset=data_train[1], batch_size=args.batch_size,
+        num_samples = args.epoch_size * args.batch_size
+        train_sampler_image = WeightedRandomSampler(data_train[0].get_weights(),  num_samples=num_samples,
+                                                    replacement=True)
+        train_sampler_sketch = WeightedRandomSampler(data_train[1].get_weights(), num_samples=num_samples,
+                                                     replacement=True)
+        train_loader_image = DataLoader(dataset=data_train[0], batch_size=args.batch_size, sampler=train_sampler_image,
+                                        num_workers=args.num_workers, pin_memory=True)
+        train_loader_sketch = DataLoader(dataset=data_train[1], batch_size=args.batch_size, sampler=train_sampler_sketch,
                                          num_workers=args.num_workers, pin_memory=True)
+        # train_loader_image = DataLoader(dataset=data_train[0], batch_size=args.batch_size, num_workers=args.num_workers,
+        #                                 pin_memory=True)
+        # train_loader_sketch = DataLoader(dataset=data_train[1], batch_size=args.batch_size,
+        #                                  num_workers=args.num_workers, pin_memory=True)
         train_loader = (train_loader_image, train_loader_sketch)
     else:
         train_sampler = WeightedRandomSampler(data_train.get_weights(), num_samples=args.epoch_size * args.batch_size,
@@ -571,7 +580,6 @@ def get_params(args):
     if "sake" in args.model:
         params_model['arch'] = args.arch
         params_model['num_hashing'] = args.num_hashing
-        params_model['num_classes'] = args.num_classes
         params_model['freeze_features'] = args.freeze_features
         params_model['ems_loss'] = args.ems_loss
         params_model['kd_lambda'] = args.kd_lambda
