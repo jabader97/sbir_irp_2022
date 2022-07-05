@@ -44,7 +44,6 @@ def create_dict_texts(root, zero_version):
     return class_to_int_dict, int_to_class_dict
 
 
-@staticmethod
 def process_str(line):
     contents = line.split()
     val = contents[-1]
