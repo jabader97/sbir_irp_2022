@@ -11,6 +11,7 @@ import os, time
 from logger import AverageMeter
 from models.senet import cse_resnet50, cse_resnet50_hashing
 from models.resnet import resnet50_hashing
+from utils import create_dict_texts
 
 
 class EMSLoss(nn.Module):
@@ -373,7 +374,7 @@ class SAKE(nn.Module):
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr,
                                           weight_decay=params_model['weight_decay'])
 
-        self.class_to_int_dict = self.get_class_int_from_str_dict()
+        self.class_to_int_dict, _ = create_dict_texts(self.root, self.zero_version)
         self.sake_lambda = params_model['sake_lambda']
         cudnn.benchmark = True
 
@@ -490,25 +491,20 @@ class SAKE(nn.Module):
         features = F.normalize(features)
         return features
 
-    def get_class_int_from_str_dict(self):
-        class_to_int_path = os.path.join(self.root, self.zero_version, 'cname_cid.txt')
-        class_to_int_dict = {}
-        with open(class_to_int_path) as f:
-            for line in f:
-                key, val = self.process_str(line)
-                class_to_int_dict[key] = val
-        return class_to_int_dict
+    def get_sketch_prediction(self, sk):
+        tag = torch.zeros(sk.size()[0], 1)
+        if torch.cuda.is_available():
+            tag = tag.cuda()
+        prediction, _ = self.model(sk, tag)
+        return prediction
 
-    @staticmethod
-    def process_str(line):
-        contents = line.split()
-        val = contents[-1]
-        name = []
-        for c in contents[0:-1]:
-            name += c.split('-')
-        join_symbol = '_'
-        key = join_symbol.join(name)
-        return key, val
+    def get_image_prediction(self, im):
+        tag = torch.ones(im.size()[0], 1)
+        if torch.cuda.is_available():
+            tag = tag.cuda()
+        prediction, _ = self.model(im, tag)
+        return prediction
+
 
     @staticmethod
     def add_to_log(logger, losses):

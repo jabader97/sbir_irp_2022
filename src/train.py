@@ -13,7 +13,7 @@ import torch.backends.cudnn as cudnn
 # user defined
 import utils
 from logger import Logger, AverageMeter
-from test import validate
+from test import validate, accuracy
 from models import get_model
 
 
@@ -96,9 +96,15 @@ def main():
             print('mAP@all on validation set after {0} epochs: {1:.4f} (real), {2:.4f} (binary)'
                 .format(epoch + 1, map_, np.mean(valid_data['aps@all_bin'])))
 
+            accuracy_per_epoch_time = time.time()
+            acc_data, acc_time_info = accuracy(train_loader, model, epoch, args)
+            time_info['accuracy_per_epoch_time'] = time.time() - accuracy_per_epoch_time
+
             if args.log_online:
                 for key in valid_data.keys():
                     valid_data[key] = np.mean(valid_data[key])
+                for key in acc_data.keys():
+                    valid_data[key] = acc_data[key]
                 wandb.log(valid_data)
 
             del valid_data
@@ -123,6 +129,8 @@ def main():
             if args.log_online:
                 for key in valid_time_info.keys():
                     time_info[key] = valid_time_info[key]
+                for key in acc_time_info.keys():
+                    time_info[key] = acc_time_info[key]
                 wandb.log(time_info)
 
     # load the best model yet

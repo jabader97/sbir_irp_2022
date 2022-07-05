@@ -165,7 +165,7 @@ class SEM_PCYC(nn.Module):
                 new_dict['tablelamp'] = table_lamp
             self.sem.append(new_dict)
 
-        self.dict_clss = params_model['dict_clss']
+        self.dict_clss = params_model['dict_clss_str2int']
         print('Done')
 
         print('Initializing trainable models...', end='')
@@ -297,9 +297,7 @@ class SEM_PCYC(nn.Module):
                 if self.aut_enc.enc[l]._get_name() == 'Linear':
                     regularizer = regularizer + torch.norm(self.aut_enc.enc[l].weight, 2, dim=0).sum()
         loss_aut_enc = self.criterion_reg(self.se_em_rec, se) + self.lambda_regular * regularizer / cl.shape[0]
-        # self.optimizer_ae.zero_grad()
         loss_aut_enc.backward(retain_graph=True)
-        # self.optimizer_ae.step()
 
         # Adversarial loss with flipped labels (false -> true)
         loss_gen_adv = self.criterion_gan(self.disc_se(self.im2se_em), True) + \
@@ -331,13 +329,7 @@ class SEM_PCYC(nn.Module):
 
         # Sum the above generator losses for back propagation and displaying
         loss_gen = loss_gen_adv + loss_gen_cyc + loss_gen_cls + loss_gen_reg
-
-        # self.optimizer_gen.zero_grad()
         loss_gen.backward(retain_graph=True)
-        # self.optimizer_gen.step()
-
-        # initialize optimizer
-        # self.optimizer_disc.zero_grad()
 
         # Semantic discriminator loss
         loss_disc_se = 2 * self.criterion_gan(self.disc_se(self.se_em_enc), True) + \
@@ -376,7 +368,8 @@ class SEM_PCYC(nn.Module):
 
         # Get numeric classes
         numeric_class_time = time.time()
-        num_cls = torch.from_numpy(sem_utils.numeric_classes(cl, self.dict_clss))
+        temp = sem_utils.numeric_classes(cl, self.dict_clss)
+        num_cls = torch.LongTensor(sem_utils.numeric_classes(cl, self.dict_clss))
         if torch.cuda.is_available():
             num_cls = num_cls.cuda()
         self.time_info['numeric_class_time'].update(time.time() - numeric_class_time)
@@ -420,6 +413,12 @@ class SEM_PCYC(nn.Module):
         im_em = self.gen_im2se(self.image_model(im))
 
         return im_em
+
+    def get_sketch_prediction(self, sk):
+        return self.classifier_sk(self.sketch_model(sk))
+
+    def get_image_prediction(self, im):
+        return self.classifier_im(self.image_model(im))
 
     def train_once(self, train_loader, epoch, args):
         # Switch to train mode

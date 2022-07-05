@@ -30,10 +30,30 @@ def numeric_classes(tags_classes, dict_tags):
     return num_classes
 
 
-def create_dict_texts(texts):
-    texts = sorted(list(set(texts)))
-    d = {l: i for i, l in enumerate(texts)}
-    return d
+def create_dict_texts(root, zero_version):
+    # training classes
+    class_to_int_path = os.path.join(root, zero_version, 'cname_cid.txt')
+    class_to_int_dict = {}
+    int_to_class_dict = {}
+    with open(class_to_int_path) as f:
+        for line in f:
+            cl, i = process_str(line)
+            i = int(i)
+            class_to_int_dict[cl] = i
+            int_to_class_dict[i] = cl
+    return class_to_int_dict, int_to_class_dict
+
+
+@staticmethod
+def process_str(line):
+    contents = line.split()
+    val = contents[-1]
+    name = []
+    for c in contents[0:-1]:
+        name += c.split('-')
+    join_symbol = '_'
+    key = join_symbol.join(name)
+    return key, val
 
 
 def read_config():
@@ -195,9 +215,6 @@ def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=
         # Make train and validation splits randomly
         tr_classes = np.random.choice(np.setdiff1d(classes, te_classes), int(0.75 * len(classes)), replace=False)
         va_classes = np.setdiff1d(classes, np.union1d(tr_classes, te_classes))
-        # tr_classes = np.random.choice(classes, int(0.8 * len(classes)), replace=False)
-        # va_classes = np.random.choice(np.setdiff1d(classes, tr_classes), int(0.1 * len(classes)), replace=False)
-        # te_classes = np.setdiff1d(classes, np.union1d(tr_classes, va_classes))
 
     train_paired = False if model == 'sake' else True
     idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, paired=train_paired,
@@ -256,9 +273,11 @@ def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sket
     te_classes = []
     with open(test_path) as f:
         for line in f:
-            content = line.split()[0].split('/')
-            if not content[1] in te_classes:
-                te_classes.append(content[1])
+            join_symbol = '_'
+            content = join_symbol.join(line.split('/')[1].split())
+            content = join_symbol.join(content.split('-'))
+            if content not in te_classes:
+                te_classes.append(content)
     te_classes = np.asarray(te_classes)
     # get train and validation classes
     if model == 'sake':
@@ -284,9 +303,6 @@ def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sket
         # make train/validation splits randomly
         tr_classes = np.random.choice(np.setdiff1d(classes, te_classes), int(0.80 * len(classes)), replace=False)
         va_classes = np.setdiff1d(classes, np.union1d(tr_classes, te_classes))
-        # tr_classes = np.random.choice(classes, int(0.88 * len(classes)), replace=False)
-        # va_classes = np.random.choice(np.setdiff1d(classes, tr_classes), int(0.06 * len(classes)), replace=False)
-        # te_classes = np.setdiff1d(classes, np.union1d(tr_classes, va_classes))
 
     train_paired = False if model == 'sake' else True
     idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, paired=train_paired)
@@ -474,32 +490,28 @@ def get_datasets(args):
         splits['te_clss_im'] = np.concatenate((tr_clss_im_[idx_im], splits['te_clss_im']), axis=0)
 
     # class dictionary
-    args.dict_clss = create_dict_texts(splits['tr_clss_im'])
-    cid_mask = True if 'sake' in args.model else False
+    args.dict_clss_str2int, args.dict_clss_int2str = create_dict_texts(args.root_path, args.zero_version)
+
     if 'sake' in args.model:
         data_train_sketch = DataGeneratorSketch(args.dataset, args.root_path, sketch_dir, sketch_sd, splits['tr_fls_sk'],
-                                            splits['tr_clss_sk'], transforms=transform_sketch, cid_mask=cid_mask,
-                                            zero_version=args.zero_version)
+                                                splits['tr_clss_sk'], transforms=transform_sketch,
+                                                int2str=args.dict_clss_int2str, zero_version=args.zero_version)
         data_train_image = DataGeneratorImage(args.dataset, args.root_path, photo_dir, photo_sd, splits['tr_fls_im'],
-                                          splits['tr_clss_im'], transforms=transform_image, cid_mask=cid_mask,
-                                          zero_version=args.zero_version)
+                                              splits['tr_clss_im'], transforms=transform_image,
+                                              int2str=args.dict_clss_int2str, zero_version=args.zero_version)
         data_train = (data_train_image, data_train_sketch)
     else:
         data_train = DataGeneratorPaired(args.dataset, args.root_path, photo_dir, sketch_dir, photo_sd, sketch_sd,
                                          splits['tr_fls_sk'], splits['tr_fls_im'], splits['tr_clss_im'],
                                          transforms_sketch=transform_sketch, transforms_image=transform_image)
     data_valid_sketch = DataGeneratorSketch(args.dataset, args.root_path, sketch_dir, sketch_sd, splits['va_fls_sk'],
-                                            splits['va_clss_sk'], transforms=transform_sketch, cid_mask=False,
-                                            zero_version=args.zero_version)
+                                            splits['va_clss_sk'], transforms=transform_sketch)
     data_valid_image = DataGeneratorImage(args.dataset, args.root_path, photo_dir, photo_sd, splits['va_fls_im'],
-                                          splits['va_clss_im'], transforms=transform_image, cid_mask=False,
-                                          zero_version=args.zero_version)
+                                          splits['va_clss_im'], transforms=transform_image)
     data_test_sketch = DataGeneratorSketch(args.dataset, args.root_path, sketch_dir, sketch_sd, splits['te_fls_sk'],
-                                           splits['te_clss_sk'], transforms=transform_sketch, cid_mask=False,
-                                           zero_version=args.zero_version)
+                                           splits['te_clss_sk'], transforms=transform_sketch)
     data_test_image = DataGeneratorImage(args.dataset, args.root_path, photo_dir, photo_sd, splits['te_fls_im'],
-                                         splits['te_clss_im'], transforms=transform_image, cid_mask=False,
-                                         zero_version=args.zero_version)
+                                         splits['te_clss_im'], transforms=transform_image)
     print('Done')
 
     if not isinstance(data_train, DataGeneratorPaired):
@@ -554,7 +566,7 @@ def get_params(args):
     params_model['dim_out'] = args.dim_out
     params_model['sem_dim'] = args.sem_dim
     # Number of classes
-    params_model['num_clss'] = len(args.dict_clss)
+    params_model['num_clss'] = len(args.dict_clss_str2int)
     # Weight (on losses) parameters
     params_model['lambda_se'] = args.lambda_se
     params_model['lambda_im'] = args.lambda_im
@@ -575,7 +587,8 @@ def get_params(args):
     # Files with semantic labels
     params_model['files_semantic_labels'] = args.files_semantic_labels
     # Class dictionary
-    params_model['dict_clss'] = args.dict_clss
+    params_model['dict_clss_int2str'] = args.dict_clss_int2str
+    params_model['dict_clss_str2int'] = args.dict_clss_str2int
     # SAKE specific parameters
     if "sake" in args.model:
         params_model['arch'] = args.arch
