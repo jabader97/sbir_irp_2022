@@ -175,10 +175,6 @@ def validate(valid_loader_sketch, valid_loader_image, model, epoch, args):
             print('[Test][Sketch] Epoch: [{0}][{1}/{2}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   .format(epoch + 1, i + 1, len(valid_loader_sketch), batch_time=batch_time))
-        # todo remove
-        if i > 2:
-            break
-        # ==========
 
     sketch_embedding_time = time.time() - sketch_embedding_time
     image_embedding_time = time.time()
@@ -208,10 +204,6 @@ def validate(valid_loader_sketch, valid_loader_image, model, epoch, args):
             print('[Test][Image] Epoch: [{0}][{1}/{2}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   .format(epoch + 1, i + 1, len(valid_loader_image), batch_time=batch_time))
-        # todo remove
-        if i > 2:
-            break
-        # ==========
 
     image_embedding_time = time.time() - image_embedding_time
     # Compute mAP
