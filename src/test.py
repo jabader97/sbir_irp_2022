@@ -96,68 +96,35 @@ def get_topk_accuracy(output, target, topk=(1,)):
 
 
 def accuracy(train_loader, model, epoch, args):
-    if isinstance(train_loader, DataLoader):
-        acc_embedding_time = time.time()
-        for i, (sk, im, cl, ti) in enumerate(train_loader):
-            if torch.cuda.is_available():
-                sk = sk.cuda()
-            sk_pr = model.get_sketch_prediction(sk)
-            if i == 0:
-                acc_sk_pr = sk_pr.cpu().data.numpy()
-                acc_cls_sk = cl
-            else:
-                acc_sk_pr = np.concatenate((acc_sk_pr, sk_pr.cpu().data.numpy()), axis=0)
-                acc_cls_sk = np.concatenate((acc_cls_sk, cl), axis=0)
+    acc_embedding_time = time.time()
+    for i, info in enumerate(train_loader):
+        if 'sake' in args.model:
+            sk, im, cl_sk, cl_im, _, _, ti = info
+        else:
+            sk, im, cl_sk, cl_im, ti = info
+        if torch.cuda.is_available():
+            sk = sk.cuda()
+        sk_pr = model.get_sketch_prediction(sk)
+        if i == 0:
+            acc_sk_pr = sk_pr.cpu().data.numpy()
+            acc_cls_sk = cl_sk
+        else:
+            acc_sk_pr = np.concatenate((acc_sk_pr, sk_pr.cpu().data.numpy()), axis=0)
+            acc_cls_sk = np.concatenate((acc_cls_sk, cl_sk), axis=0)
 
-            if torch.cuda.is_available():
-                im = im.cuda()
-            im_pr = model.get_image_prediction(im)
-            if i == 0:
-                acc_im_pr = im_pr.cpu().data.numpy()
-                acc_cls_im = cl
-            else:
-                acc_im_pr = np.concatenate((acc_im_pr, im_pr.cpu().data.numpy()), axis=0)
-                acc_cls_im = np.concatenate((acc_cls_im, cl), axis=0)
+        if torch.cuda.is_available():
+            im = im.cuda()
+        im_pr = model.get_image_prediction(im)
+        if i == 0:
+            acc_im_pr = im_pr.cpu().data.numpy()
+            acc_cls_im = cl_im
+        else:
+            acc_im_pr = np.concatenate((acc_im_pr, im_pr.cpu().data.numpy()), axis=0)
+            acc_cls_im = np.concatenate((acc_cls_im, cl_im), axis=0)
 
-        acc_embedding_time = time.time() - acc_embedding_time
-        time_info = {'acc_embedding_time': acc_embedding_time}
-    else:
-        acc_sketch_embedding_time = time.time()
-        train_loader_image = train_loader[0]
-        train_loader_sketch = train_loader[1]
-        for i, (sk, cls_sk, mask, ti) in enumerate(train_loader_sketch):
-            if torch.cuda.is_available():
-                sk = sk.cuda()
-            sk_pr = model.get_sketch_prediction(sk)
-            if i == 0:
-                acc_sk_pr = sk_pr.cpu().data.numpy()
-                acc_cls_sk = cls_sk
-            else:
-                acc_sk_pr = np.concatenate((acc_sk_pr, sk_pr.cpu().data.numpy()), axis=0)
-                acc_cls_sk = np.concatenate((acc_cls_sk, cls_sk), axis=0)
-            if (i + 1) % args.log_interval == 0:
-                print('[Acc][Sketch] Epoch: [{0}][{1}/{2}]\t'
-                      .format(epoch + 1, i + 1, len(train_loader_sketch)))
+    acc_embedding_time = time.time() - acc_embedding_time
+    time_info = {'acc_embedding_time': acc_embedding_time}
 
-        acc_sketch_embedding_time = time.time() - acc_sketch_embedding_time
-        acc_image_embedding_time = time.time()
-        for i, (im, cls_im, mask, ti) in enumerate(train_loader_image):
-            if torch.cuda.is_available():
-                im = im.cuda()
-            im_pr = model.get_image_prediction(im)
-            if i == 0:
-                acc_im_pr = im_pr.cpu().data.numpy()
-                acc_cls_im = cls_im
-            else:
-                acc_im_pr = np.concatenate((acc_im_pr, im_pr.cpu().data.numpy()), axis=0)
-                acc_cls_im = np.concatenate((acc_cls_im, cls_im), axis=0)
-            if (i + 1) % args.log_interval == 0:
-                print('[Acc][Image] Epoch: [{0}][{1}/{2}]\t'
-                      .format(epoch + 1, i + 1, len(train_loader_image)))
-
-        acc_image_embedding_time = time.time() - acc_image_embedding_time
-        time_info = {'acc_sketch_embedding_time': acc_sketch_embedding_time,
-                     'acc_image_embedding_time': acc_image_embedding_time}
     accuracy_time = time.time()
     predicted = np.concatenate((acc_im_pr, acc_sk_pr), axis=0)
     acc_cls = utils.numeric_classes(np.concatenate((acc_cls_im, acc_cls_sk), axis=0), args.dict_clss_str2int)

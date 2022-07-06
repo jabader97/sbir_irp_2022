@@ -406,11 +406,9 @@ class SAKE(nn.Module):
                 self.curr_m = new_m
         self.model.train()
         self.model_t.train()
-        train_loader_image = train_loader[0]
-        train_loader_sketch = train_loader[1]
         train_setup_time = time.time() - train_setup_time
-        for i, ((input, target, cid_mask, ti), (input_ext, target_ext, cid_mask_ext, ti_ext)) in enumerate(zip(train_loader_image, train_loader_sketch)):
-            get_item_time.update(ti.sum() + ti_ext.sum())
+        for i, (input_ext, input, target_ext, target, cid_mask_ext, cid_mask, ti) in enumerate(train_loader):
+            get_item_time.update(ti.sum())
             one_loop_time_start = time.time()
             target = torch.Tensor([int(self.class_to_int_dict[t]) for t in target])
             target_ext = torch.Tensor([int(self.class_to_int_dict[t]) for t in target_ext])
@@ -462,7 +460,7 @@ class SAKE(nn.Module):
                       'Loss {losses.val:.4f} ({losses.avg:.4f})\t'
                       'KD Loss {losses_kd.val:.4f} ({losses_kd.avg:.4f})\t'
                       'Loss total {loss_total:.4f} ({loss_total:.4f})\t'
-                      .format(epoch + 1, i + 1, len(train_loader_image), losses=losses,
+                      .format(epoch + 1, i + 1, len(train_loader), losses=losses,
                               losses_kd=losses_kd, loss_total=loss_total))
 
         loss_total = losses.avg + self.sake_lambda * losses_kd.avg

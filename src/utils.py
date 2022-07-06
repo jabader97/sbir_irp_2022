@@ -215,8 +215,7 @@ def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=
         tr_classes = np.random.choice(np.setdiff1d(classes, te_classes), int(0.75 * len(classes)), replace=False)
         va_classes = np.setdiff1d(classes, np.union1d(tr_classes, te_classes))
 
-    train_paired = False if model == 'sake' else True
-    idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, paired=train_paired,
+    idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, paired=False,
                                                       filter_sketch=filter_sketch)
     idx_va_im, idx_va_sk = get_coarse_grained_samples(va_classes, fls_im, fls_sk, paired=False,
                                                       filter_sketch=filter_sketch)
@@ -303,8 +302,7 @@ def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sket
         tr_classes = np.random.choice(np.setdiff1d(classes, te_classes), int(0.80 * len(classes)), replace=False)
         va_classes = np.setdiff1d(classes, np.union1d(tr_classes, te_classes))
 
-    train_paired = False if model == 'sake' else True
-    idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, paired=train_paired)
+    idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, paired=False)
     idx_va_im, idx_va_sk = get_coarse_grained_samples(va_classes, fls_im, fls_sk, paired=False)
     idx_te_im, idx_te_sk = get_coarse_grained_samples(te_classes, fls_im, fls_sk, paired=False)
 
@@ -491,18 +489,13 @@ def get_datasets(args):
     # class dictionary
     args.dict_clss_str2int, args.dict_clss_int2str = create_dict_texts(args.root_path, args.zero_version)
 
-    if 'sake' in args.model:
-        data_train_sketch = DataGeneratorSketch(args.dataset, args.root_path, sketch_dir, sketch_sd, splits['tr_fls_sk'],
-                                                splits['tr_clss_sk'], transforms=transform_sketch,
-                                                int2str=args.dict_clss_int2str, zero_version=args.zero_version)
-        data_train_image = DataGeneratorImage(args.dataset, args.root_path, photo_dir, photo_sd, splits['tr_fls_im'],
-                                              splits['tr_clss_im'], transforms=transform_image,
-                                              int2str=args.dict_clss_int2str, zero_version=args.zero_version)
-        data_train = (data_train_image, data_train_sketch)
-    else:
-        data_train = DataGeneratorPaired(args.dataset, args.root_path, photo_dir, sketch_dir, photo_sd, sketch_sd,
-                                         splits['tr_fls_sk'], splits['tr_fls_im'], splits['tr_clss_im'],
-                                         transforms_sketch=transform_sketch, transforms_image=transform_image)
+    match_class = False if 'sake' in args.model else True
+    int2str = args.dict_clss_int2str if 'sake' in args.model else ''
+    data_train = DataGeneratorPaired(args.dataset, args.root_path, photo_dir, sketch_dir, photo_sd, sketch_sd,
+                                     splits['tr_fls_sk'], splits['tr_fls_im'], splits['tr_clss_sk'],
+                                     splits['tr_clss_im'], int2str=int2str, transforms_sketch=transform_sketch,
+                                     transforms_image=transform_image, match_class=match_class,
+                                     zero_version=args.zero_version)
     data_valid_sketch = DataGeneratorSketch(args.dataset, args.root_path, sketch_dir, sketch_sd, splits['va_fls_sk'],
                                             splits['va_clss_sk'], transforms=transform_sketch)
     data_valid_image = DataGeneratorImage(args.dataset, args.root_path, photo_dir, photo_sd, splits['va_fls_im'],
@@ -513,26 +506,12 @@ def get_datasets(args):
                                          splits['te_clss_im'], transforms=transform_image)
     print('Done')
 
-    if not isinstance(data_train, DataGeneratorPaired):
-        num_samples = args.epoch_size * args.batch_size
-        train_sampler_image = WeightedRandomSampler(data_train[0].get_weights(),  num_samples=num_samples,
-                                                    replacement=True)
-        train_sampler_sketch = WeightedRandomSampler(data_train[1].get_weights(), num_samples=num_samples,
-                                                     replacement=True)
-        train_loader_image = DataLoader(dataset=data_train[0], batch_size=args.batch_size, sampler=train_sampler_image,
-                                        num_workers=args.num_workers, pin_memory=True)
-        train_loader_sketch = DataLoader(dataset=data_train[1], batch_size=args.batch_size, sampler=train_sampler_sketch,
-                                         num_workers=args.num_workers, pin_memory=True)
-        # train_loader_image = DataLoader(dataset=data_train[0], batch_size=args.batch_size, num_workers=args.num_workers,
-        #                                 pin_memory=True)
-        # train_loader_sketch = DataLoader(dataset=data_train[1], batch_size=args.batch_size,
-        #                                  num_workers=args.num_workers, pin_memory=True)
-        train_loader = (train_loader_image, train_loader_sketch)
-    else:
-        train_sampler = WeightedRandomSampler(data_train.get_weights(), num_samples=args.epoch_size * args.batch_size,
-                                              replacement=True)
-        train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, sampler=train_sampler,
-                                  num_workers=args.num_workers, pin_memory=True)
+    train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, num_workers=args.num_workers,
+                              pin_memory=True)
+    # train_sampler = WeightedRandomSampler(data_train.get_weights(), num_samples=args.epoch_size * args.batch_size,
+    #                                           replacement=True)
+    # train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, sampler=train_sampler,
+    #                               num_workers=args.num_workers, pin_memory=True)
 
     # PyTorch valid loader for sketch
     valid_loader_sketch = DataLoader(dataset=data_valid_sketch, batch_size=args.batch_size, shuffle=False,

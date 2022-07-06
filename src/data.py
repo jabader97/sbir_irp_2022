@@ -9,11 +9,12 @@ import numpy as np
 import torch.utils.data as data
 import pickle
 from PIL import Image, ImageOps
+from sklearn import utils as sk_utils
 
 
 class DataGeneratorPaired(data.Dataset):
-    def __init__(self, dataset, root, photo_dir, sketch_dir, photo_sd, sketch_sd, fls_sk, fls_im, clss,
-                 transforms_sketch=None, transforms_image=None, int2str='', zero_version=''):
+    def __init__(self, dataset, root, photo_dir, sketch_dir, photo_sd, sketch_sd, fls_sk, fls_im, clss_sk, clss_im,
+                 transforms_sketch=None, transforms_image=None, int2str='', zero_version='', match_class=True):
         self.dataset = dataset
         self.root = root
         self.photo_dir = photo_dir
@@ -21,10 +22,13 @@ class DataGeneratorPaired(data.Dataset):
         self.photo_sd = photo_sd
         self.sketch_sd = sketch_sd
         self.fls_sk = fls_sk
-        self.fls_im = fls_im
-        self.clss = clss
+        self.clss_sk = clss_sk
+        shuffle = sk_utils.shuffle(fls_im, clss_im)
+        self.fls_im = shuffle[0]
+        self.clss_im = shuffle[1]
         self.transforms_sketch = transforms_sketch
         self.transforms_image = transforms_image
+        self.match_class = match_class
         if len(int2str) > 0:
             cid_mask_file = os.path.join(self.root, zero_version, 'cid_mask.pickle')
             with open(cid_mask_file, 'rb') as fh:
@@ -37,27 +41,34 @@ class DataGeneratorPaired(data.Dataset):
 
     def __getitem__(self, item):
         get_item_time = time.time()
-        sk = ImageOps.invert(Image.open(os.path.join(self.root, self.sketch_dir, self.sketch_sd, self.fls_sk[item]))).\
-            convert(mode='RGB')
         im = Image.open(os.path.join(self.root, self.photo_dir, self.photo_sd, self.fls_im[item])).convert(mode='RGB')
-        cls = self.clss[item]
+        cls_im = self.clss_im[item]
+        if self.match_class:
+            sk_options = np.where(self.clss_sk == cls_im)[0]
+        else:
+            sk_options = np.arange(len(self.clss_sk))
+        sk_id = np.random.choice(sk_options)
+        sk = ImageOps.invert(Image.open(os.path.join(self.root, self.sketch_dir, self.sketch_sd,
+                                                     self.fls_sk[sk_id]))).convert(mode='RGB')
+        cls_sk = self.clss_sk[sk_id]
         if self.transforms_image is not None:
             im = self.transforms_image(im)
         if self.transforms_sketch is not None:
             sk = self.transforms_sketch(sk)
         if len(self.cid_matrix) > 0:
-            mask = self.cid_matrix[cls]
-            return sk, im, cls, mask, (time.time() - get_item_time)
-        return sk, im, cls, (time.time() - get_item_time)
+            mask_im = self.cid_matrix[cls_im]
+            mask_sk = self.cid_matrix[cls_sk]
+            return sk, im, cls_sk, cls_im, mask_sk, mask_im, (time.time() - get_item_time)
+        return sk, im, cls_sk, cls_im, (time.time() - get_item_time)
 
     def __len__(self):
-        return len(self.clss)
+        return len(self.clss_im)
 
     def get_weights(self):
-        weights = np.zeros(self.clss.shape[0])
-        uniq_clss = np.unique(self.clss)
+        weights = np.zeros(self.clss_im.shape[0])
+        uniq_clss = np.unique(self.clss_im)
         for cls in uniq_clss:
-            idx = np.where(self.clss == cls)[0]
+            idx = np.where(self.clss_im == cls)[0]
             weights[idx] = 1 / idx.shape[0]
         return weights
 
