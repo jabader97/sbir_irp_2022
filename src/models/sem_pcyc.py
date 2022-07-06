@@ -368,7 +368,6 @@ class SEM_PCYC(nn.Module):
 
         # Get numeric classes
         numeric_class_time = time.time()
-        temp = sem_utils.numeric_classes(cl, self.dict_clss)
         num_cls = torch.LongTensor(sem_utils.numeric_classes(cl, self.dict_clss))
         if torch.cuda.is_available():
             num_cls = num_cls.cuda()
@@ -415,10 +414,14 @@ class SEM_PCYC(nn.Module):
         return im_em
 
     def get_sketch_prediction(self, sk):
-        return self.classifier_sk(self.sketch_model(sk))
+        em = self.sketch_model(sk)
+        se = self.gen_sk2se(em)
+        return self.classifier_se(se)
 
     def get_image_prediction(self, im):
-        return self.classifier_im(self.image_model(im))
+        em = self.image_model(im)
+        se = self.gen_im2se(em)
+        return self.classifier_se(se)
 
     def train_once(self, train_loader, epoch, args):
         # Switch to train mode
