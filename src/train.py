@@ -104,8 +104,9 @@ def main():
             if args.log_online:
                 for key in valid_data.keys():
                     valid_data[key] = np.mean(valid_data[key])
-                for key in acc_data.keys():
-                    valid_data[key] = acc_data[key]
+                if args.accuracy:
+                    for key in acc_data.keys():
+                        valid_data[key] = acc_data[key]
                 wandb.log(valid_data)
 
             del valid_data
@@ -130,8 +131,9 @@ def main():
             if args.log_online:
                 for key in valid_time_info.keys():
                     time_info[key] = valid_time_info[key]
-                for key in acc_time_info.keys():
-                    time_info[key] = acc_time_info[key]
+                if args.accuracy:
+                    for key in acc_time_info.keys():
+                        time_info[key] = acc_time_info[key]
                 wandb.log(time_info)
 
     # load the best model yet
