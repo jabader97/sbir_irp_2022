@@ -20,6 +20,7 @@ class Options:
         parser.add_argument('--model', required=True, default='sem_pcyc', help='SBIR model')
         # Optional argument
         parser.add_argument('--dataset', required=True, default='Sketchy', help='Name of the dataset')
+        parser.add_argument('--accuracy', action='store_true', default=False, help='Calculate the accuracy')
         # Different training test sets
         parser.add_argument('--split-eccv-2018', action='store_true', default=False,
                             help='Whether to use the splits of ECCV 2018 paper')

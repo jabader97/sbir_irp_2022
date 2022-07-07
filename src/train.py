@@ -96,9 +96,10 @@ def main():
             print('mAP@all on validation set after {0} epochs: {1:.4f} (real), {2:.4f} (binary)'
                 .format(epoch + 1, map_, np.mean(valid_data['aps@all_bin'])))
 
-            accuracy_per_epoch_time = time.time()
-            acc_data, acc_time_info = accuracy(train_loader, model, epoch, args)
-            time_info['accuracy_per_epoch_time'] = time.time() - accuracy_per_epoch_time
+            if args.accuracy:
+                accuracy_per_epoch_time = time.time()
+                acc_data, acc_time_info = accuracy(train_loader, model, epoch, args)
+                time_info['accuracy_per_epoch_time'] = time.time() - accuracy_per_epoch_time
 
             if args.log_online:
                 for key in valid_data.keys():

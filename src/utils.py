@@ -508,10 +508,6 @@ def get_datasets(args):
 
     train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, num_workers=args.num_workers,
                               pin_memory=True)
-    # train_sampler = WeightedRandomSampler(data_train.get_weights(), num_samples=args.epoch_size * args.batch_size,
-    #                                           replacement=True)
-    # train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, sampler=train_sampler,
-    #                               num_workers=args.num_workers, pin_memory=True)
 
     # PyTorch valid loader for sketch
     valid_loader_sketch = DataLoader(dataset=data_valid_sketch, batch_size=args.batch_size, shuffle=False,
