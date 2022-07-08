@@ -146,7 +146,7 @@ def main():
         model.load_state_dict(checkpoint['state_dict'])
         print("Loaded best model '{0}' (epoch {1}; mAP@all {2:.4f})".format(best_model_file, epoch, best_map))
         print('***Test***')
-        valid_data = validate(test_loader_sketch, test_loader_image, model, epoch, args)
+        valid_data, time_info = validate(test_loader_sketch, test_loader_image, model, epoch, args)
 
         if args.log_online:
             valid_data_test = {}
