@@ -16,7 +16,6 @@ from sklearn.metrics import average_precision_score
 from options import Options
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
-from torch.utils.data.sampler import WeightedRandomSampler
 from data import DataGeneratorPaired, DataGeneratorSketch, DataGeneratorImage
 from PIL import Image
 
@@ -529,6 +528,8 @@ def get_params(args):
     # Model parameters
     params_model = dict()
     params_model['model'] = args.model
+    params_model['sketch_arch'] = args.sketch_arch
+    params_model['image_arch'] = args.image_arch
     params_model['epochs'] = args.epochs
     # Paths to pre-trained sketch and image models
     path_sketch_model = os.path.join(args.path_aux, 'CheckPoints', args.dataset, 'sketch')
@@ -541,25 +542,11 @@ def get_params(args):
     params_model['sem_dim'] = args.sem_dim
     # Number of classes
     params_model['num_clss'] = len(args.dict_clss_str2int)
-    # Weight (on losses) parameters
-    params_model['lambda_se'] = args.lambda_se
-    params_model['lambda_im'] = args.lambda_im
-    params_model['lambda_sk'] = args.lambda_sk
-    params_model['lambda_gen_cyc'] = args.lambda_gen_cyc
-    params_model['lambda_gen_adv'] = args.lambda_gen_adv
-    params_model['lambda_gen_cls'] = args.lambda_gen_cls
-    params_model['lambda_gen_reg'] = args.lambda_gen_reg
-    params_model['lambda_disc_se'] = args.lambda_disc_se
-    params_model['lambda_disc_sk'] = args.lambda_disc_sk
-    params_model['lambda_disc_im'] = args.lambda_disc_im
-    params_model['lambda_regular'] = args.lambda_regular
     # Optimizers' parameters
     params_model['lr'] = args.lr
     params_model['momentum'] = args.momentum
     params_model['milestones'] = args.milestones
     params_model['gamma'] = args.gamma
-    # Files with semantic labels
-    params_model['files_semantic_labels'] = args.files_semantic_labels
     # Class dictionary
     params_model['dict_clss_int2str'] = args.dict_clss_int2str
     params_model['dict_clss_str2int'] = args.dict_clss_str2int
@@ -574,4 +561,21 @@ def get_params(args):
         params_model['sake_lambda'] = args.sake_lambda
         params_model['weight_decay'] = args.weight_decay
         params_model['zero_version'] = args.zero_version
+    if 'sem' in args.model:
+        # Weight (on losses) parameters
+        params_model['lambda_se'] = args.lambda_se
+        params_model['lambda_im'] = args.lambda_im
+        params_model['lambda_sk'] = args.lambda_sk
+        params_model['lambda_gen_cyc'] = args.lambda_gen_cyc
+        params_model['lambda_gen_adv'] = args.lambda_gen_adv
+        params_model['lambda_gen_cls'] = args.lambda_gen_cls
+        params_model['lambda_gen_reg'] = args.lambda_gen_reg
+        params_model['lambda_disc_se'] = args.lambda_disc_se
+        params_model['lambda_disc_sk'] = args.lambda_disc_sk
+        params_model['lambda_disc_im'] = args.lambda_disc_im
+        params_model['lambda_regular'] = args.lambda_regular
+        params_model['image_dim'] = args.image_dim
+        params_model['sketch_dim'] = args.sketch_dim
+        # Files with semantic labels
+        params_model['files_semantic_labels'] = args.files_semantic_labels
     return params_model

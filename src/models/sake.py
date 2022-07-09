@@ -9,8 +9,8 @@ import torch.backends.cudnn as cudnn
 import numpy as np
 import os, time
 from logger import AverageMeter
-from models.senet import cse_resnet50, cse_resnet50_hashing
-from models.resnet import resnet50_hashing
+from architectures.senet import cse_resnet50, cse_resnet50_hashing
+from architectures.resnet import resnet50_hashing
 from utils import create_dict_texts
 
 

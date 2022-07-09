@@ -18,6 +18,8 @@ class Options:
         parser.add_argument('--seed', default=1, type=int, help='Random seed for reproducibility.')
         # Model
         parser.add_argument('--model', required=True, default='sem_pcyc', help='SBIR model')
+        parser.add_argument('--sketch_arch', default='resnet50', help='sketch model architecture')
+        parser.add_argument('--image_arch', default='resnet50', help='sketch model architecture')
         # Optional argument
         parser.add_argument('--dataset', required=True, default='Sketchy', help='Name of the dataset')
         parser.add_argument('--accuracy', action='store_true', default=False, help='Calculate the accuracy')
@@ -28,13 +30,12 @@ class Options:
                             help='Generalized zero-shot sketch based image retrieval')
         parser.add_argument('--filter-sketch', action='store_true', default=False, help='Allows only one sketch per '
                                                                                         'image (only for Sketchy)')
-        # Semantic models
-        parser.add_argument('--semantic-models', nargs='+', default=['word2vec-google-news', 'hieremb-path'],
-                            type=str, help='Semantic model')
         # Size parameters
         parser.add_argument('--im-sz', default=224, type=int, help='Image size')
         parser.add_argument('--sk-sz', default=224, type=int, help='Sketch size')
         parser.add_argument('--dim-out', default=128, type=int, help='Output dimension of sketch and image')
+        parser.add_argument('--image_dim', default=512, type=int, help='image embedding network output size')
+        parser.add_argument('--sketch_dim', default=512, type=int, help='sketch embedding network output size')
         # Model parameters
         parser.add_argument('--batch-size', default=128, type=int, help='Batch size')
         parser.add_argument('--epoch-size', default=100, type=int, help='Epoch size')
@@ -73,6 +74,9 @@ class Options:
         return self.parser.parse_args()
 
     def sem_pcyc_parse(self, parser):
+        # Semantic models
+        parser.add_argument('--semantic-models', nargs='+', default=['word2vec-google-news', 'hieremb-path'],
+                            type=str, help='Semantic model')
         # Weight (on loss) parameters
         parser.add_argument('--lambda-se', default=10.0, type=float, help='Weight on the semantic model')
         parser.add_argument('--lambda-im', default=10.0, type=float, help='Weight on the image model')

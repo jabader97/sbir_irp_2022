@@ -10,30 +10,12 @@ import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torchvision import models
 
 # user defined
 import utils as sem_utils
 from losses import GANLoss
 from logger import AverageMeter
-
-
-class VGGNetFeats(nn.Module):
-    def __init__(self, pretrained=True, finetune=True):
-        super(VGGNetFeats, self).__init__()
-        model = models.vgg16(pretrained=pretrained)
-        for param in model.parameters():
-            param.requires_grad = finetune
-        self.features = model.features
-        self.classifier = nn.Sequential(
-            *list(model.classifier.children())[:-1],
-            nn.Linear(4096, 512)
-        )
-
-    def forward(self, x):
-        x = self.features(x)
-        x = self.classifier(x.view(x.size(0), -1))
-        return x
+from architectures import get_model
 
 
 class Generator(nn.Module):
@@ -148,12 +130,15 @@ class SEM_PCYC(nn.Module):
         self.sem_dim = params_model['sem_dim']
         # Number of classes
         self.num_clss = params_model['num_clss']
-        # Sketch model: pre-trained on ImageNet
-        self.sketch_model = VGGNetFeats(pretrained=False, finetune=False)
-        self.load_weight(self.sketch_model, params_model['path_sketch_model'], 'sketch')
-        # Image model: pre-trained on ImageNet
-        self.image_model = VGGNetFeats(pretrained=False, finetune=False)
-        self.load_weight(self.image_model, params_model['path_image_model'], 'image')
+        # Sketch and Image models pre-trained on ImageNet
+        self.image_model, self.sketch_model = get_model(params_model)
+        for param in self.image_model.parameters():
+            param.requires_grad = False
+        for param in self.sketch_model.parameters():
+            param.requires_grad = False
+        # TODO figure out if need this?
+        # self.load_weight(self.sketch_model, params_model['path_sketch_model'], 'sketch')
+        # self.load_weight(self.image_model, params_model['path_image_model'], 'image')
         # Semantic model embedding
         self.sem = []
         for f in params_model['files_semantic_labels']:
@@ -171,25 +156,25 @@ class SEM_PCYC(nn.Module):
         print('Initializing trainable models...', end='')
         # Generators
         # Sketch to semantic generator
-        self.gen_sk2se = Generator(in_dim=512, out_dim=self.dim_out, noise=False, use_dropout=True)
+        self.gen_sk2se = Generator(in_dim=params_model['sketch_dim'], out_dim=self.dim_out, noise=False, use_dropout=True)
         # Image to semantic generator
-        self.gen_im2se = Generator(in_dim=512, out_dim=self.dim_out, noise=False, use_dropout=True)
+        self.gen_im2se = Generator(in_dim=params_model['image_dim'], out_dim=self.dim_out, noise=False, use_dropout=True)
         # Semantic to sketch generator
-        self.gen_se2sk = Generator(in_dim=self.dim_out, out_dim=512, noise=False, use_dropout=True)
+        self.gen_se2sk = Generator(in_dim=self.dim_out, out_dim=params_model['sketch_dim'], noise=False, use_dropout=True)
         # Semantic to image generator
-        self.gen_se2im = Generator(in_dim=self.dim_out, out_dim=512, noise=False, use_dropout=True)
+        self.gen_se2im = Generator(in_dim=self.dim_out, out_dim=params_model['image_dim'], noise=False, use_dropout=True)
         # Discriminators
         # Common semantic discriminator
         self.disc_se = Discriminator(in_dim=self.dim_out, noise=True, use_batchnorm=True)
         # Sketch discriminator
-        self.disc_sk = Discriminator(in_dim=512, noise=True, use_batchnorm=True)
+        self.disc_sk = Discriminator(in_dim=params_model['sketch_dim'], noise=True, use_batchnorm=True)
         # Image discriminator
-        self.disc_im = Discriminator(in_dim=512, noise=True, use_batchnorm=True)
+        self.disc_im = Discriminator(in_dim=params_model['image_dim'], noise=True, use_batchnorm=True)
         # Semantic autoencoder
         self.aut_enc = AutoEncoder(dim=self.sem_dim, hid_dim=self.dim_out, nlayer=1)
         # Classifiers
-        self.classifier_sk = nn.Linear(512, self.num_clss, bias=False)
-        self.classifier_im = nn.Linear(512, self.num_clss, bias=False)
+        self.classifier_sk = nn.Linear(params_model['sketch_dim'], self.num_clss, bias=False)
+        self.classifier_im = nn.Linear(params_model['image_dim'], self.num_clss, bias=False)
         self.classifier_se = nn.Linear(self.dim_out, self.num_clss, bias=False)
         for param in self.classifier_sk.parameters():
             param.requires_grad = False
@@ -260,10 +245,13 @@ class SEM_PCYC(nn.Module):
         self.time_info = {}
 
     def load_weight(self, model, path, type='sketch'):
-        if torch.cuda.is_available():
-            checkpoint = torch.load(os.path.join(path, 'model_best.pth'))
-        else:
-            checkpoint = torch.load(os.path.join(path, 'model_best.pth'), map_location=torch.device('cpu'))
+        try:
+            if torch.cuda.is_available():
+                checkpoint = torch.load(os.path.join(path, 'model_best.pth'))
+            else:
+                checkpoint = torch.load(os.path.join(path, 'model_best.pth'), map_location=torch.device('cpu'))
+        except FileNotFoundError:
+            return
         model.load_state_dict(checkpoint['state_dict_' + type])
 
     def forward(self, sk, im, se):
@@ -447,7 +435,6 @@ class SEM_PCYC(nn.Module):
 
         # Start counting time
         time_start = time.time()
-        print('Length of train loader is {}'.format(len(train_loader)))
         train_once_setup_time = time.time() - train_once_setup_time
         train_once_loop_time = time.time()
         for i, (sk, im, cl, _, ti) in enumerate(train_loader):
