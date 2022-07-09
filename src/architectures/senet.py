@@ -675,3 +675,38 @@ def cse_resnet50_hashing(hashing_dim, num_classes=1000, pretrained='imagenet', e
         settings = pretrained_settings['se_resnet50'][pretrained]
         initialize_pretrained_model_hashing(model, hashing_dim, num_classes, settings)
     return model
+
+
+class CSEResnetModel_KDHashing(nn.Module):
+    def __init__(self, hashing_dim, num_classes, pretrained=True, freeze_features=False, ems=False):
+        super(CSEResnetModel_KDHashing, self).__init__()
+
+        self.hashing_dim = hashing_dim
+        self.num_classes = num_classes
+
+        if pretrained:
+            self.original_model = cse_resnet50_hashing(self.hashing_dim)
+        else:
+            self.original_model = cse_resnet50_hashing(self.hashing_dim, pretrained=None)
+
+        self.ems = ems
+        if self.ems:
+            self.linear = EMSLayer(num_classes, hashing_dim)
+        else:
+            self.linear = nn.Linear(in_features=hashing_dim, out_features=num_classes)
+
+        # Freeze the resnet layers
+        if freeze_features:
+            layers = [self.original_model.layer1, self.original_model.layer2, self.original_model.layer3,
+                      self.original_model.layer4]
+            for ff in layers:
+                for pp in ff.parameters():
+                    pp.requires_grad = False
+
+    def forward(self, x, y):
+        out_o = self.original_model.features(x, y)
+        out_o = self.original_model.hashing(out_o)
+
+        out = self.linear(out_o)
+        out_kd = self.original_model.logits(out_o)
+        return out, out_kd

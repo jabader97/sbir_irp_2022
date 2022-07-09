@@ -12,6 +12,7 @@ from logger import AverageMeter
 from architectures.senet import cse_resnet50, cse_resnet50_hashing
 from architectures.resnet import resnet50_hashing
 from utils import create_dict_texts
+from architectures import get_model
 
 
 class EMSLoss(nn.Module):
@@ -222,42 +223,6 @@ class CSEResnetModel_KD(nn.Module):
         return out, out_kd
 
 
-class CSEResnetModel_KDHashing(nn.Module):
-    def __init__(self, arch, hashing_dim, num_classes, pretrained=True, freeze_features=False, ems=False):
-        super(CSEResnetModel_KDHashing, self).__init__()
-
-        self.hashing_dim = hashing_dim
-        self.num_classes = num_classes
-        self.modelName = arch
-
-        if pretrained:
-            self.original_model = cse_resnet50_hashing(self.hashing_dim)
-        else:
-            self.original_model = cse_resnet50_hashing(self.hashing_dim, pretrained=None)
-
-        self.ems = ems
-        if self.ems:
-            self.linear = EMSLayer(num_classes, hashing_dim)
-        else:
-            self.linear = nn.Linear(in_features=hashing_dim, out_features=num_classes)
-
-        # Freeze the resnet layers
-        if freeze_features:
-            layers = [self.original_model.layer1, self.original_model.layer2, self.original_model.layer3,
-                      self.original_model.layer4]
-            for ff in layers:
-                for pp in ff.parameters():
-                    pp.requires_grad = False
-
-    def forward(self, x, y):
-        out_o = self.original_model.features(x, y)
-        out_o = self.original_model.hashing(out_o)
-
-        out = self.linear(out_o)
-        out_kd = self.original_model.logits(out_o)
-        return out, out_kd
-
-
 class EMSLayer(nn.Module):
     def __init__(self, num_classes, num_dimension):
         super(EMSLayer, self).__init__()
@@ -289,69 +254,16 @@ def pairwise_distances(x, y=None):
     return dist
 
 
-class HashingEncoder(nn.Module):
-    def __init__(self, input_dim, one_dim, hash_dim):
-        super(HashingEncoder, self).__init__()
-        self.input_dim = input_dim
-        self.one_dim = one_dim
-        self.hash_dim = hash_dim
-
-        self.en1 = nn.Linear(input_dim, one_dim)
-        self.en2 = nn.Linear(one_dim, hash_dim)
-        self.de1 = nn.Linear(hash_dim, one_dim)
-        self.de2 = nn.Linear(one_dim, input_dim)
-
-        self.relu = nn.ReLU(inplace=True)
-
-    def forward(self, x):
-        e = self.en1(x)
-        e = self.en2(self.relu(e))
-        r = self.de1(e)
-        r = self.de2(self.relu(r))
-        r = self.relu(r)
-        return e, r
-
-
-class ScatterLoss(nn.Module):
-    def __init__(self):
-        super(ScatterLoss, self).__init__()
-
-    def forward(self, e, y):
-        sample_num = y.shape[0]
-        e_norm = e / sqrt(sum(mul(e, e), dim=1, keepdim=True))
-        cnter = 0
-        loss = 0
-        for i1 in range(sample_num - 1):
-            e1 = e_norm[i1]
-            y1 = y[i1]
-            for i2 in range(i1 + 1, sample_num):
-                e2 = e_norm[i2]
-                y2 = y[i2]
-                if y1 != y2:
-                    cnter += 1
-                    loss += sum(mul(e1, e2))
-
-        return loss / cnter
-
-
-class QuantizationLoss(nn.Module):
-    def __init__(self):
-        super(QuantizationLoss, self).__init__()
-        self.mse = nn.MSELoss()
-
-    def forward(self, e):
-        return self.mse(e, sign(e))
-
-
 class SAKE(nn.Module):
     def __init__(self, params_model):
         super(SAKE, self).__init__()
-        self.model = CSEResnetModel_KDHashing(params_model['arch'], params_model['num_hashing'],
-                                              params_model['num_clss'],
-                                              freeze_features=params_model["freeze_features"],
-                                              ems=params_model['ems_loss'])
+        self.model = get_model(params_model['student_arch'] + "_hashing", params_model['num_clss'], 'sake',
+                               hashing_dim=params_model['num_hashing'], freeze_features=params_model['freeze_features'],
+                               ems=params_model['ems_loss'])
         self.model = nn.DataParallel(self.model)
-        self.model_t = cse_resnet50()
+        self.model_t = get_model(params_model['teacher_arch'], params_model['num_clss'], 'sake',
+                               hashing_dim=params_model['num_hashing'], freeze_features=params_model['freeze_features'],
+                               ems=params_model['ems_loss'])
         self.model_t = nn.DataParallel(self.model_t)
         if params_model['ems_loss']:
             print("**************  Use EMS Loss!")

@@ -561,6 +561,8 @@ def get_params(args):
         params_model['sake_lambda'] = args.sake_lambda
         params_model['weight_decay'] = args.weight_decay
         params_model['zero_version'] = args.zero_version
+        params_model['student_arch'] = args.student_arch
+        params_model['teacher_arch'] = args.teacher_arch
     if 'sem' in args.model:
         # Weight (on losses) parameters
         params_model['lambda_se'] = args.lambda_se

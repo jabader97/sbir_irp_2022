@@ -101,8 +101,6 @@ class Options:
                                  ' (default: cse_resnet50)')
         parser.add_argument('--num_hashing', metavar='N', type=int, default=64,
                             help='number of hashing dimension (default: 64)')
-        parser.add_argument('--num_classes', metavar='N', type=int, default=220,
-                            help='number of classes (default: 220)')
         parser.add_argument('-f', '--freeze_features', dest='freeze_features', action='store_true',
                             help='freeze features of the base network')
         parser.add_argument('--ems_loss', dest='ems_loss', action='store_true',
@@ -117,6 +115,8 @@ class Options:
                             help='zeroshot version for training and testing (default: zeroshot)')
         parser.add_argument('--weight-decay', '--wd', default=5e-4, type=float,
                             metavar='W', help='weight decay (default: 5e-4)')
+        parser.add_argument('--student_arch', default='cse_resnet50', help='student model architecture')
+        parser.add_argument('--teacher_arch', default='cse_resnet50', help='teacher model architecture')
         return parser
 
     def wandb_parse(self, parser):

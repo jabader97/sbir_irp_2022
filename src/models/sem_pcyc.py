@@ -131,9 +131,10 @@ class SEM_PCYC(nn.Module):
         # Number of classes
         self.num_clss = params_model['num_clss']
         # Sketch and Image models pre-trained on ImageNet
-        self.image_model, self.sketch_model = get_model(params_model)
+        self.image_model = get_model(params_model['image_arch'], params_model['image_dim'], 'sem_pcyc')
         for param in self.image_model.parameters():
             param.requires_grad = False
+        self.sketch_model = get_model(params_model['sketch_arch'], params_model['sketch_dim'], 'sem_pcyc')
         for param in self.sketch_model.parameters():
             param.requires_grad = False
         # TODO figure out if need this?
