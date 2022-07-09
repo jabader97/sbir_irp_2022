@@ -2,8 +2,14 @@ import torch.nn
 from torchvision import models
 import timm
 
+supported_models = {'sake': ['cse_resnet50'],
+                    'sem_pcyc': ['resnet50', 'se_resnet50', 'vgg']}
+
 
 def get_model(params_model):
+    if params_model['image_arch'] not in supported_models[params_model['model']] or \
+            params_model['sketch_arch'] not in supported_models[params_model['model']]:
+        raise ValueError("{} not supported for SAKE")
     image_model = get(params_model['image_arch'], params_model['image_dim'])
     sketch_model = get(params_model['sketch_arch'], params_model['sketch_dim'])
     return image_model, sketch_model
