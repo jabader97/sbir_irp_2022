@@ -115,7 +115,7 @@ class Options:
                             help='zeroshot version for training and testing (default: zeroshot)')
         parser.add_argument('--weight-decay', '--wd', default=5e-4, type=float,
                             metavar='W', help='weight decay (default: 5e-4)')
-        parser.add_argument('--student_arch', default='cse_resnet50', help='student model architecture')
+        parser.add_argument('--student_arch', default='cse_resnet50_hashing', help='student model architecture')
         parser.add_argument('--teacher_arch', default='cse_resnet50', help='teacher model architecture')
         return parser
 

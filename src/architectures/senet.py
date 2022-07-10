@@ -710,3 +710,36 @@ class CSEResnetModel_KDHashing(nn.Module):
         out = self.linear(out_o)
         out_kd = self.original_model.logits(out_o)
         return out, out_kd
+
+
+class CSEResnetModel_KD(nn.Module):
+    def __init__(self, num_classes, pretrained=True, freeze_features=False, ems=False):
+        super(CSEResnetModel_KD, self).__init__()
+
+        self.num_classes = num_classes
+
+        if pretrained:
+            self.original_model = cse_resnet50()
+        else:
+            self.original_model = cse_resnet50(pretrained=None)
+
+        self.ems = ems
+        if self.ems:
+            self.linear = EMSLayer(num_classes, 2048)
+        else:
+            self.linear = nn.Linear(in_features=2048, out_features=num_classes)
+
+        # Freeze the resnet layers
+        if freeze_features:
+            for ff in self.features:
+                for pp in ff.parameters():
+                    pp.requires_grad = False
+
+    def forward(self, x, y):
+        out_o = self.original_model.features(x, y)
+        out = nn.AdaptiveAvgPool2d(1)(out_o)
+        out = out.view(out.size()[0], -1)
+        out = self.linear(out)
+
+        out_kd = self.original_model.logits(out_o)
+        return out, out_kd

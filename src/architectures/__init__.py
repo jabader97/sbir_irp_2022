@@ -1,9 +1,9 @@
 import torch.nn
 from torchvision import models
 import timm
-from architectures.senet import cse_resnet50, CSEResnetModel_KDHashing
+from architectures.senet import cse_resnet50, CSEResnetModel_KDHashing, CSEResnetModel_KD
 
-supported_models = {'sake': ['cse_resnet50', 'cse_resnet50_hashing'],
+supported_models = {'sake': ['cse_resnet50', 'cse_resnet50_hashing_kd', 'cse_resnet50_kd'],
                     'sem_pcyc': ['resnet50', 'se_resnet50', 'vgg']}
 
 
@@ -22,8 +22,10 @@ def get_model(arch, out_dim, model, hashing_dim=0, freeze_features=False, ems=Fa
                                                     torch.nn.Linear(in_features=4096, out_features=out_dim))
     elif arch == 'cse_resnet50':
         model_arch = cse_resnet50()
-    elif arch == 'cse_resnet50_hashing':
+    elif arch == 'cse_resnet50_hashing_kd':
         model_arch = CSEResnetModel_KDHashing(hashing_dim, out_dim, freeze_features=freeze_features, ems=ems)
+    elif arch == 'cse_resnet50_kd':
+        model_arch = CSEResnetModel_KD(out_dim, freeze_features=freeze_features, ems=ems)
     else:
         raise ValueError("Architecture {} not supported".format(arch))
     return model_arch
