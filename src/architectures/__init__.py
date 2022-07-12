@@ -13,13 +13,28 @@ def get_model(arch, out_dim, model, hashing_dim=0, freeze_features=False, ems=Fa
     if arch == 'resnet50':
         model_arch = timm.create_model('resnet50', pretrained=True)
         model_arch.fc = torch.nn.Linear(in_features=2048, out_features=out_dim)
+        if freeze_features:
+            for param in model_arch.parameters():
+                param.requires_grad = False
+            for param in model_arch.fc.parameters():
+                param.requires_grad = True
     elif arch == 'se_resnet50':
         model_arch = timm.create_model('seresnet50', pretrained=True)
         model_arch.fc = torch.nn.Linear(in_features=2048, out_features=out_dim)
+        if freeze_features:
+            for param in model_arch.parameters():
+                param.requires_grad = False
+            for param in model_arch.fc.parameters():
+                param.requires_grad = True
     elif arch == 'vgg':
         model_arch = models.vgg16(pretrained=True)
         model_arch.classifier = torch.nn.Sequential(torch.nn.Sequential(*list(model_arch.classifier.children())[:-1]),
                                                     torch.nn.Linear(in_features=4096, out_features=out_dim))
+        if freeze_features:
+            for param in model_arch.parameters():
+                param.requires_grad = False
+            for param in model_arch.classifier.parameters():
+                param.requires_grad = True
     elif arch == 'cse_resnet50':
         model_arch = cse_resnet50()
     elif arch == 'cse_resnet50_hashing_kd':

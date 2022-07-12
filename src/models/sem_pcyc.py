@@ -131,12 +131,10 @@ class SEM_PCYC(nn.Module):
         # Number of classes
         self.num_clss = params_model['num_clss']
         # Sketch and Image models pre-trained on ImageNet
-        self.image_model = get_model(params_model['image_arch'], params_model['image_dim'], 'sem_pcyc')
-        for param in self.image_model.parameters():
-            param.requires_grad = False
-        self.sketch_model = get_model(params_model['sketch_arch'], params_model['sketch_dim'], 'sem_pcyc')
-        for param in self.sketch_model.parameters():
-            param.requires_grad = False
+        self.image_model = get_model(params_model['image_arch'], params_model['image_dim'], 'sem_pcyc',
+                                     freeze_features=True)
+        self.sketch_model = get_model(params_model['sketch_arch'], params_model['sketch_dim'], 'sem_pcyc',
+                                      freeze_features=True)
         # TODO figure out if need this?
         # self.load_weight(self.sketch_model, params_model['path_sketch_model'], 'sketch')
         # self.load_weight(self.image_model, params_model['path_image_model'], 'image')
