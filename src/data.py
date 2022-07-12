@@ -10,11 +10,13 @@ import torch.utils.data as data
 import pickle
 from PIL import Image, ImageOps
 from sklearn import utils as sk_utils
+from skimage.transform import warp, AffineTransform
 
 
 class DataGeneratorPaired(data.Dataset):
     def __init__(self, dataset, root, photo_dir, sketch_dir, photo_sd, sketch_sd, fls_sk, fls_im, clss_sk, clss_im,
-                 transforms_sketch=None, transforms_image=None, int2str='', zero_version='', match_class=True):
+                 transforms_sketch=None, transforms_image=None, int2str='', zero_version='', match_class=True,
+                 aug=False):
         self.dataset = dataset
         self.root = root
         self.photo_dir = photo_dir
@@ -29,6 +31,7 @@ class DataGeneratorPaired(data.Dataset):
         self.transforms_sketch = transforms_sketch
         self.transforms_image = transforms_image
         self.match_class = match_class
+        self.aug = aug
         if len(int2str) > 0:
             cid_mask_file = os.path.join(self.root, zero_version, 'cid_mask.pickle')
             with open(cid_mask_file, 'rb') as fh:
@@ -51,6 +54,9 @@ class DataGeneratorPaired(data.Dataset):
         sk = ImageOps.invert(Image.open(os.path.join(self.root, self.sketch_dir, self.sketch_sd,
                                                      self.fls_sk[sk_id]))).convert(mode='RGB')
         cls_sk = self.clss_sk[sk_id]
+        if self.aug:
+            im = self.random_transform(im)
+            sk = self.random_transform(sk)
         if self.transforms_image is not None:
             im = self.transforms_image(im)
         if self.transforms_sketch is not None:
@@ -71,6 +77,35 @@ class DataGeneratorPaired(data.Dataset):
             idx = np.where(self.clss_im == cls)[0]
             weights[idx] = 1 / idx.shape[0]
         return weights
+
+    def random_transform(self, img):
+        img = np.array(img)
+        if np.random.random() < 0.5:
+            img = img[:, ::-1, :]
+
+        if np.random.random() < 0.5:
+            sx = np.random.uniform(0.7, 1.3)
+            sy = np.random.uniform(0.7, 1.3)
+        else:
+            sx = 1.0
+            sy = 1.0
+
+        if np.random.random() < 0.5:
+            rx = np.random.uniform(-30.0 * 2.0 * np.pi / 360.0, +30.0 * 2.0 * np.pi / 360.0)
+        else:
+            rx = 0.0
+
+        if np.random.random() < 0.5:
+            tx = np.random.uniform(-10, 10)
+            ty = np.random.uniform(-10, 10)
+        else:
+            tx = 0.0
+            ty = 0.0
+
+        aftrans = AffineTransform(scale=(sx, sy), rotation=rx, translation=(tx, ty))
+        img_aug = warp(img, aftrans.inverse, preserve_range=True).astype('uint8')
+
+        return Image.fromarray(img_aug)
 
 
 class DataGeneratorSketch(data.Dataset):

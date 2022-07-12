@@ -489,12 +489,13 @@ def get_datasets(args):
     args.dict_clss_str2int, args.dict_clss_int2str = create_dict_texts(args.root_path, args.zero_version)
 
     match_class = False if 'sake' in args.model else True
+    aug = True if 'sake' in args.model else False
     int2str = args.dict_clss_int2str if 'sake' in args.model else ''
     data_train = DataGeneratorPaired(args.dataset, args.root_path, photo_dir, sketch_dir, photo_sd, sketch_sd,
                                      splits['tr_fls_sk'], splits['tr_fls_im'], splits['tr_clss_sk'],
                                      splits['tr_clss_im'], int2str=int2str, transforms_sketch=transform_sketch,
                                      transforms_image=transform_image, match_class=match_class,
-                                     zero_version=args.zero_version)
+                                     zero_version=args.zero_version, aug=aug)
     data_valid_sketch = DataGeneratorSketch(args.dataset, args.root_path, sketch_dir, sketch_sd, splits['va_fls_sk'],
                                             splits['va_clss_sk'], transforms=transform_sketch)
     data_valid_image = DataGeneratorImage(args.dataset, args.root_path, photo_dir, photo_sd, splits['va_fls_im'],
