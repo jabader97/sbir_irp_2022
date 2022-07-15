@@ -114,8 +114,6 @@ class SAKE(nn.Module):
                 if torch.cuda.is_available():
                     self.criterion_train = self.criterion_train.cuda()
                 self.curr_m = new_m
-        self.model.train()
-        self.model_t.train()
         train_setup_time = time.time() - train_setup_time
         for i, (input_ext, input, target_ext, target, cid_mask_ext, cid_mask, ti) in enumerate(train_loader):
             get_item_time.update(ti.sum())

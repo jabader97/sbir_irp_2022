@@ -413,7 +413,6 @@ class SEM_PCYC(nn.Module):
     def train_once(self, train_loader, epoch, args):
         # Switch to train mode
         train_once_setup_time = time.time()
-        self.train()
         batch_time = AverageMeter()
         losses_gen_adv = AverageMeter()
         losses_gen_cyc = AverageMeter()

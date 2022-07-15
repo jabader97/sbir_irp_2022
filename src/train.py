@@ -81,6 +81,7 @@ def main():
 
             # train on training set
             loss_per_epoch_time = time.time()
+            model.train()
             losses, time_info = model.train_once(train_loader, epoch, args)
             time_info['train_one_epoch_time'] = time.time() - loss_per_epoch_time
 
@@ -98,6 +99,7 @@ def main():
 
             if args.accuracy:
                 accuracy_per_epoch_time = time.time()
+                model.eval()
                 acc_data, acc_time_info = accuracy(train_loader, model, epoch, args)
                 time_info['accuracy_per_epoch_time'] = time.time() - accuracy_per_epoch_time
 
@@ -146,6 +148,7 @@ def main():
         model.load_state_dict(checkpoint['state_dict'])
         print("Loaded best model '{0}' (epoch {1}; mAP@all {2:.4f})".format(best_model_file, epoch, best_map))
         print('***Test***')
+        model.eval()
         valid_data, time_info = validate(test_loader_sketch, test_loader_image, model, epoch, args)
 
         if args.log_online:
