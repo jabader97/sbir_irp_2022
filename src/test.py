@@ -36,21 +36,7 @@ def get_topk_accuracy(output, target, topk=(1,)):
 
 def accuracy(train_loader, model, epoch, args):
     acc_embedding_time = time.time()
-    for i, info in enumerate(train_loader):
-        if 'sake' in args.model:
-            sk, im, cl_sk, cl_im, _, _, ti = info
-        else:
-            sk, im, cl_sk, cl_im, ti = info
-        if torch.cuda.is_available():
-            sk = sk.cuda()
-        sk_pr = model.get_sketch_prediction(sk)
-        if i == 0:
-            acc_sk_pr = sk_pr.cpu().data.numpy()
-            acc_cls_sk = cl_sk
-        else:
-            acc_sk_pr = np.concatenate((acc_sk_pr, sk_pr.cpu().data.numpy()), axis=0)
-            acc_cls_sk = np.concatenate((acc_cls_sk, cl_sk), axis=0)
-
+    for i, (im, cl_im, ti) in enumerate(train_loader):
         if torch.cuda.is_available():
             im = im.cuda()
         im_pr = model.get_image_prediction(im)
@@ -65,9 +51,9 @@ def accuracy(train_loader, model, epoch, args):
     time_info = {'acc_embedding_time': acc_embedding_time}
 
     accuracy_time = time.time()
-    predicted = np.concatenate((acc_im_pr, acc_sk_pr), axis=0)
-    acc_cls = utils.numeric_classes(np.concatenate((acc_cls_im, acc_cls_sk), axis=0), args.dict_clss_str2int)
-    acc1, acc5 = get_topk_accuracy(torch.from_numpy(predicted), torch.from_numpy(acc_cls), topk=(1, 5))
+    # predicted = np.concatenate((acc_im_pr, acc_sk_pr), axis=0)
+    acc_cls_im = utils.numeric_classes(acc_cls_im, args.dict_clss_str2int)
+    acc1, acc5 = get_topk_accuracy(torch.from_numpy(acc_im_pr), torch.from_numpy(acc_cls_im), topk=(1, 5))
     accuracy_time = time.time() - accuracy_time
     stats = {'acc1': acc1, 'acc5': acc5}
     time_info['accuracy_time'] = accuracy_time

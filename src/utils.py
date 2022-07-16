@@ -496,6 +496,8 @@ def get_datasets(args):
                                      splits['tr_clss_im'], int2str=int2str, transforms_sketch=transform_sketch,
                                      transforms_image=transform_image, match_class=match_class,
                                      zero_version=args.zero_version, aug=aug)
+    data_train_image = DataGeneratorImage(args.dataset, args.root_path, photo_dir, photo_sd, splits['tr_fls_im'],
+                                          splits['tr_clss_im'], transforms=transform_image)
     data_valid_sketch = DataGeneratorSketch(args.dataset, args.root_path, sketch_dir, sketch_sd, splits['va_fls_sk'],
                                             splits['va_clss_sk'], transforms=transform_sketch)
     data_valid_image = DataGeneratorImage(args.dataset, args.root_path, photo_dir, photo_sd, splits['va_fls_im'],
@@ -508,6 +510,8 @@ def get_datasets(args):
 
     train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, num_workers=args.num_workers,
                               pin_memory=True)
+    train_loader_image = DataLoader(dataset=data_train_image, batch_size=args.batch_size, num_workers=args.num_workers,
+                                    pin_memory=True)
 
     # PyTorch valid loader for sketch
     valid_loader_sketch = DataLoader(dataset=data_valid_sketch, batch_size=args.batch_size, shuffle=False,
@@ -521,7 +525,7 @@ def get_datasets(args):
     # PyTorch test loader for image
     test_loader_image = DataLoader(dataset=data_test_image, batch_size=args.batch_size, shuffle=False,
                                     num_workers=args.num_workers, pin_memory=True)
-    return train_loader, valid_loader_sketch, valid_loader_image, test_loader_sketch, test_loader_image, \
+    return train_loader, train_loader_image, valid_loader_sketch, valid_loader_image, test_loader_sketch, test_loader_image, \
            photo_dir, sketch_dir, splits, photo_sd, sketch_sd
 
 

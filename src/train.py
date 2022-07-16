@@ -33,7 +33,7 @@ def main():
     print('Result path: {}'.format(path_results))
 
     dataset_creation_time = time.time()
-    train_loader, valid_loader_sketch, valid_loader_image, test_loader_sketch, test_loader_image,\
+    train_loader, train_loader_image, valid_loader_sketch, valid_loader_image, test_loader_sketch, test_loader_image,\
         photo_dir, sketch_dir, splits, photo_sd, sketch_sd = utils.get_datasets(args)
     dataset_creation_time = time.time() - dataset_creation_time
     params_model = utils.get_params(args)
@@ -100,7 +100,7 @@ def main():
             if args.accuracy:
                 accuracy_per_epoch_time = time.time()
                 model.eval()
-                acc_data, acc_time_info = accuracy(train_loader, model, epoch, args)
+                acc_data, acc_time_info = accuracy(train_loader_image, model, epoch, args)
                 time_info['accuracy_per_epoch_time'] = time.time() - accuracy_per_epoch_time
 
             if args.log_online:
