@@ -4,7 +4,7 @@ import timm
 from architectures.senet import cse_resnet50, CSEResnetModel_KDHashing, CSEResnetModel_KD
 
 supported_models = {'sake': ['cse_resnet50', 'cse_resnet50_hashing_kd', 'cse_resnet50_kd'],
-                    'sem_pcyc': ['resnet50', 'se_resnet50', 'vgg']}
+                    'sem_pcyc': ['resnet50', 'se_resnet50', 'vgg'], 'baseline': ['resnet50', 'se_resnet50', 'vgg']}
 
 
 def get_model(arch, out_dim, model, hashing_dim=0, freeze_features=False, ems=False):
