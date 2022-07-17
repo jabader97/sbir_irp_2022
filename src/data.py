@@ -54,7 +54,7 @@ class DataGeneratorPaired(data.Dataset):
         sk = ImageOps.invert(Image.open(os.path.join(self.root, self.sketch_dir, self.sketch_sd,
                                                      self.fls_sk[sk_id]))).convert(mode='RGB')
         cls_sk = self.clss_sk[sk_id]
-        if self.aug:
+        if self.aug and np.random.random() < 0.7:
             im = self.random_transform(im)
             sk = self.random_transform(sk)
         if self.transforms_image is not None:
