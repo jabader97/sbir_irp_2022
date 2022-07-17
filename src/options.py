@@ -22,7 +22,7 @@ class Options:
         parser.add_argument('--image_arch', default='resnet50', help='sketch model architecture')
         # Optional argument
         parser.add_argument('--dataset', required=True, default='Sketchy', help='Name of the dataset')
-        parser.add_argument('--accuracy', action='store_true', default=False, help='Calculate the accuracy')
+        parser.add_argument('--accuracy', default='None', type=str, help='Calculate the accuracy')
         # Different training test sets
         parser.add_argument('--split-eccv-2018', action='store_true', default=False,
                             help='Whether to use the splits of ECCV 2018 paper')
