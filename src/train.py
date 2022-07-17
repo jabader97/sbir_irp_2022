@@ -103,7 +103,7 @@ def main():
                 if args.accuracy == 'sketch':
                     acc_data, acc_time_info = accuracy_sketch(train_loader_sketch, model, epoch, args)
                 elif args.accuracy == 'all':
-                    acc_data, acc_time_info = accuracy_all(train_loader_sketch, model, epoch, args)
+                    acc_data, acc_time_info = accuracy_all(train_loader, model, epoch, args)
                 else:
                     raise ValueError("Unknown accuracy type {}".format(args.accuracy))
                 time_info['accuracy_per_epoch_time'] = time.time() - accuracy_per_epoch_time
