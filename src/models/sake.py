@@ -95,6 +95,7 @@ class SAKE(nn.Module):
             param_group['lr'] = lr
 
     def train_once(self, train_loader, epoch, args):
+        self.model_t.eval()
         train_setup_time = time.time()
         losses = AverageMeter()
         losses_kd = AverageMeter()
