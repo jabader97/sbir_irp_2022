@@ -74,6 +74,7 @@ class SAKE(nn.Module):
         self.epochs = params_model['epochs']
         self.root = params_model['root_path']
         self.zero_version = params_model['zero_version']
+        torch.manual_seed(params_model['seed'])
 
         if torch.cuda.is_available():
             self.model = self.model.cuda()

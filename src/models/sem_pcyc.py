@@ -135,6 +135,7 @@ class SEM_PCYC(nn.Module):
                                      freeze_features=True)
         self.sketch_model = get_model(params_model['sketch_arch'], params_model['sketch_dim'], 'sem_pcyc',
                                       freeze_features=True)
+        torch.manual_seed(params_model['seed'])
         # TODO figure out if need this?
         # self.load_weight(self.sketch_model, params_model['path_sketch_model'], 'sketch')
         # self.load_weight(self.image_model, params_model['path_image_model'], 'image')
