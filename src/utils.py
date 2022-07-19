@@ -491,11 +491,13 @@ def get_datasets(args):
     match_class = False if 'sake' in args.model else True
     aug = True if 'sake' in args.model else False
     int2str = args.dict_clss_int2str if 'sake' in args.model else ''
+    neg_im = True if 'baseline' in args.model else False
+
     data_train = DataGeneratorPaired(args.dataset, args.root_path, photo_dir, sketch_dir, photo_sd, sketch_sd,
                                      splits['tr_fls_sk'], splits['tr_fls_im'], splits['tr_clss_sk'],
                                      splits['tr_clss_im'], int2str=int2str, transforms_sketch=transform_sketch,
                                      transforms_image=transform_image, match_class=match_class,
-                                     zero_version=args.zero_version, aug=aug)
+                                     zero_version=args.zero_version, aug=aug, neg_im=neg_im)
     data_train_sketch = DataGeneratorSketch(args.dataset, args.root_path, sketch_dir, sketch_sd, splits['tr_fls_sk'],
                                             splits['tr_clss_sk'], transforms=transform_sketch)
     data_valid_sketch = DataGeneratorSketch(args.dataset, args.root_path, sketch_dir, sketch_sd, splits['va_fls_sk'],
@@ -536,11 +538,14 @@ def get_params(args):
     params_model['sketch_arch'] = args.sketch_arch
     params_model['image_arch'] = args.image_arch
     params_model['epochs'] = args.epochs
+    params_model['seed'] = args.seed
     # Paths to pre-trained sketch and image models
     path_sketch_model = os.path.join(args.path_aux, 'CheckPoints', args.dataset, 'sketch')
     path_image_model = os.path.join(args.path_aux, 'CheckPoints', args.dataset, 'image')
     params_model['path_sketch_model'] = path_sketch_model
     params_model['path_image_model'] = path_image_model
+    params_model['image_dim'] = args.image_dim
+    params_model['sketch_dim'] = args.sketch_dim
     params_model['root_path'] = args.root_path
     # Dimensions
     params_model['dim_out'] = args.dim_out
@@ -581,8 +586,8 @@ def get_params(args):
         params_model['lambda_disc_sk'] = args.lambda_disc_sk
         params_model['lambda_disc_im'] = args.lambda_disc_im
         params_model['lambda_regular'] = args.lambda_regular
-        params_model['image_dim'] = args.image_dim
-        params_model['sketch_dim'] = args.sketch_dim
         # Files with semantic labels
         params_model['files_semantic_labels'] = args.files_semantic_labels
+    if 'baseline' in args.model:
+        params_model['triplet_margin'] = args.triplet_margin
     return params_model

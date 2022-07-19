@@ -16,7 +16,7 @@ from skimage.transform import warp, AffineTransform
 class DataGeneratorPaired(data.Dataset):
     def __init__(self, dataset, root, photo_dir, sketch_dir, photo_sd, sketch_sd, fls_sk, fls_im, clss_sk, clss_im,
                  transforms_sketch=None, transforms_image=None, int2str='', zero_version='', match_class=True,
-                 aug=False):
+                 aug=False, neg_im=False):
         self.dataset = dataset
         self.root = root
         self.photo_dir = photo_dir
@@ -32,6 +32,7 @@ class DataGeneratorPaired(data.Dataset):
         self.transforms_image = transforms_image
         self.match_class = match_class
         self.aug = aug
+        self.neg_im = neg_im
         if len(int2str) > 0:
             cid_mask_file = os.path.join(self.root, zero_version, 'cid_mask.pickle')
             with open(cid_mask_file, 'rb') as fh:
@@ -65,6 +66,14 @@ class DataGeneratorPaired(data.Dataset):
             mask_im = self.cid_matrix[cls_im]
             mask_sk = self.cid_matrix[cls_sk]
             return sk, im, cls_sk, cls_im, mask_sk, mask_im, (time.time() - get_item_time)
+        if self.neg_im:
+            neg_id = np.random.choice(np.where(self.clss_im != cls_im)[0])
+            neg_im = ImageOps.invert(Image.open(os.path.join(self.root, self.photo_dir, self.photo_sd,
+                                                             self.fls_im[neg_id]))).convert(mode='RGB')
+            cls_neg = self.clss_sk[neg_id]
+            if self.transforms_image is not None:
+                neg_im = self.transforms_image(neg_im)
+            return sk, im, neg_im, cls_sk, cls_im, cls_neg, (time.time() - get_item_time)
         return sk, im, cls_sk, cls_im, (time.time() - get_item_time)
 
     def __len__(self):

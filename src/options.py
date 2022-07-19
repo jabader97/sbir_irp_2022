@@ -66,6 +66,7 @@ class Options:
         parser.add_argument('--path_aux', type=str, default="", help='Output path')
         parser = self.sem_pcyc_parse(parser)
         parser = self.sake_parser(parser)
+        parser = self.baseline_parser(parser)
         parser = self.wandb_parse(parser)
         self.parser = parser
 
@@ -117,6 +118,10 @@ class Options:
                             metavar='W', help='weight decay (default: 5e-4)')
         parser.add_argument('--student_arch', default='cse_resnet50_hashing', help='student model architecture')
         parser.add_argument('--teacher_arch', default='cse_resnet50', help='teacher model architecture')
+        return parser
+
+    def baseline_parser(self, parser):
+        parser.add_argument('--triplet_margin', default=0.2, type=float, help='Triplet loss margin for baseline.')
         return parser
 
     def wandb_parse(self, parser):
